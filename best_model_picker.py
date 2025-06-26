@@ -18,6 +18,8 @@ def hyperparameter_optimizer(
         train_target: pd.Series,
         valid_features: pd.DataFrame,
         valid_target: pd.Series,
+        test_features: pd.DataFrame = None,
+        test_target: pd.Series = None,
         model_name: str = None,
         model: str = None,
         param_name: str = None,
@@ -63,7 +65,7 @@ def hyperparameter_optimizer(
         # fit and score existing parameters
         model.set_params(**model_params.get(model_name))
         model.fit(train_features, train_target)
-        score = model.score(valid_features, valid_target)
+        score = model.score(test_features, test_target)
         
         return model_params, score
 
@@ -71,6 +73,8 @@ def hyperparameter_optimizer(
 def best_model_picker(
         features: pd.DataFrame,
         target: pd.Series,
+        test_features: pd.DataFrame = None,
+        test_target: pd.Series = None,
         ordinal_cols: list = None,
         random_state: int = None,
         model_options: dict = None,
@@ -79,6 +83,7 @@ def best_model_picker(
         missing_values_method: str = None,
         ):
     # check and parameters
+    print(f'Running...')
     df = pd.concat([features, target], axis=1)
     
     model_scores = {}
@@ -102,14 +107,14 @@ def best_model_picker(
     elif not (isinstance(model_options, dict) or (isinstance(model_options, str) and model_options == 'all')):
         raise ValueError("model_options must be either None or a dictionary.")
     
-    # Optimize max_depth for DecisionTreeClassifier
-    print(f'Running...')
+    
+    # Loop through model types to transform data by model type
     
     for model_type, models in model_options.items():
         print(f'model_type: {model_type}')
 
         for model_name, model in models.items():
-            print(f"{model_name}\n{model}")
+            print(f'model_name: {model_name}\nmodel: {model}')
         
             # Transform data
             print(f'- data_transformer()...')
@@ -123,7 +128,7 @@ def best_model_picker(
             ordinal_cols=ordinal_cols,
             missing_values_method=missing_values_method,
             fill_value=None,
-            model=model,
+            model_name=model_name,
             feature_scaler= None
             )
 
@@ -131,30 +136,32 @@ def best_model_picker(
             
             # split ratio of 0 or 1 outputs a df 
             if isinstance(transformed_data, pd.DataFrame):
+                print(f'transformed_data is a dataframe')
                 train_features = transformed_data.drop(target.name, axis=1)
                 train_target = transformed_data[target.name]
                 valid_features = transformed_data.drop(target.name, axis=1)
                 valid_target = transformed_data[target.name]
 
             else:
+                print(f'transformed_data is a tuple with training data')
                 train_features = transformed_data[0]
                 train_target = transformed_data[1]
 
                 if len(transformed_data) >= 4:
+                    print(f'...and with validation data')
                     valid_features = transformed_data[2]
                     valid_target = transformed_data[3]
                 else:
                     valid_features, valid_target = None, None
 
                 if len(transformed_data) == 6:
+                    print(f'...and with test data')
                     test_features = transformed_data[4]
                     test_target = transformed_data[5]
-                else:
-                    test_features, test_target = None, None
+                # else:
+                #     test_features, test_target = None, None
+            
 
-            # if model_params is not None:
-            #     model.set_params(**model_params)
-                
             for param_name, param_value in model.get_params().items():
                 if model_name == 'RandomForestClassifier':
                     if param_name == 'max_depth':
@@ -164,6 +171,8 @@ def best_model_picker(
                             train_target=train_target,
                             valid_features=valid_features,
                             valid_target=valid_target,
+                            test_features=test_features,
+                            test_target=test_target,
                             model_name=model_name,
                             model=model,
                             param_name=param_name,
@@ -186,6 +195,8 @@ def best_model_picker(
                             train_target=train_target,
                             valid_features=valid_features,
                             valid_target=valid_target,
+                            test_features=test_features,
+                            test_target=test_target,
                             model_name=model_name,
                             model=model,
                             param_name=param_name,
@@ -218,6 +229,8 @@ def best_model_picker(
                             train_target=train_target,
                             valid_features=valid_features,
                             valid_target=valid_target,
+                            test_features=test_features,
+                            test_target=test_target,
                             model_name=model_name,
                             model=model,
                             param_name=param_name,
@@ -246,7 +259,12 @@ def best_model_picker(
 
                     # Fit Logistic Regression model
                     model.fit(train_features, train_target)
-                    lr_model_score = model.score(valid_features, valid_target)
+
+                    # Score the model
+                    if test_features is not None and test_target is not None:
+                        lr_model_score = model.score(test_features, test_target)
+                    else:
+                        lr_model_score = model.score(valid_features, valid_target)
 
                     # log latest best score
                     model_scores[model_name] = lr_model_score

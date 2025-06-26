@@ -216,15 +216,15 @@ def feature_scaler(df):
     print(f'--- feature_scaler() complete\n')
     return df
 
-def categorical_encoder(df, model):
-    if model == 'LogisticRegression' or None:
+def categorical_encoder(df, model_name):
+    if model_name == 'LogisticRegression' or None:
         # dummy vars (one-hot encoding) for categorial vars
         df_ohe = pd.get_dummies(df, drop_first=True)
         df = df_ohe
 
         print(f'-- categorical_encoder() complete\n')
         return df
-    elif model == 'DecisionTreeClassifier' or 'RandomForestClassifier':
+    elif model_name == 'DecisionTreeClassifier' or 'RandomForestClassifier':
         # Label Encoding for categorical vars
         encoder = OrdinalEncoder()
         encoder.fit_transform(df)
@@ -324,7 +324,7 @@ def data_transformer(
         missing_values_method: str = None,
         fill_value: any = None,
         random_state: int = None,
-        model: str = None,
+        model_name: str = None,
         feature_scaler: bool = None
 
     ): 
@@ -368,7 +368,7 @@ def data_transformer(
             missing_values_method,
         )    
     except Exception as e:
-        pass #print(f"(no downsampling): {e}")
+        print(f"(no downsampling): {e}\n")
 
     # Upsample if applicable
     try:
@@ -382,14 +382,14 @@ def data_transformer(
             missing_values_method,
         )
     except Exception as e:
-        pass #print(f"(no upsampling): {e}")
+        print(f"(no upsampling): {e}\n")
 
     # handling missing data
     try:
         print('-- addressing missing values...')
         df = missing_values(df, missing_values_method, fill_value)
     except Exception as e:
-        pass #print(f"(no missing values): {e}")
+        print(f"(no missing values): {e}\n")
 
     # Encode ordinal columns if specified
     try:
@@ -397,24 +397,24 @@ def data_transformer(
         df, encoded_values_dict = ordinal_encoder(df, ordinal_cols)
 
     except Exception as e:
-        pass #print(f"(no ordinal vars to encode): {e}")
+        print(f"(no ordinal vars to encode): {e}\n")
 
     # Encode categorial columns: one-hot encoding for regression (regression), Label Encoding for ML
     try:
         print('-- categorical encoding...')
-        df = categorical_encoder(df, model)            
+        df = categorical_encoder(df, model_name)            
     except Exception as e:
-        pass #print(f"(no categorical vars to encode): {e}")
+        print(f"(no categorical vars to encode): {e}\n")
 
     # feature scaling for regression models
     try:
-        if model == 'LogisticRegression' or None:
+        if model_name == 'LogisticRegression' or None:
             print('-- feature scaling...')
             df = feature_scaler(df)
         else:
             pass
     except Exception as e:
-        pass #print(f'(no feature scaling): {e}')
+        print(f'(no feature scaling): {e}\n')
     
 
     # Split data
@@ -440,6 +440,7 @@ def data_transformer(
             )
             print(f'data_transformer() complete\n')
             return train_features, train_target, valid_features, valid_target
+        
         elif len(split_ratio) == 3:
             train_features, train_target, valid_features, valid_target, test_features, test_target = data_splitter(
                 df,
@@ -451,4 +452,4 @@ def data_transformer(
             return train_features, train_target, valid_features, valid_target, test_features, test_target
         
     except Exception as e:
-        pass #print(f"(no splitting): {e}")
+        print(f"(no splitting): {e}\n")
