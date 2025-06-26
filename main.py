@@ -15,7 +15,7 @@ target = df['Exited']
 features = df.drop(target.name, axis = 1)
 
 print(f'best_model_picker()...')
-best_model_name, best_model_score, optimized_hyperparameters, transformed_data = best_model_picker(
+model_options, model_scores, optimized_hyperparameters, transformed_data = best_model_picker(
     features = features,
     target = target,
     ordinal_cols = None,
@@ -25,10 +25,19 @@ best_model_name, best_model_score, optimized_hyperparameters, transformed_data =
     missing_values_method= None,
 )
 
+print(f'best_model_picker outputs:')
+print(f'model_options: {(model_options)}')
+print(f'model_scores: {model_scores}')
+print(f'optimized_hyperparameters: {optimized_hyperparameters}')
+print(f'transformed_data: {type(transformed_data)}')
+
+
 print(f'testing all models on test data...')
-best_model_name, best_model_score, optimized_hyperparameters, _ = best_model_picker(
+model_options, model_scores, _, _ = best_model_picker(
     features = transformed_data[4],
     target = transformed_data[5],
     ordinal_cols = None,
     random_state = 99999,
+    model_options= model_options,
+    model_params = optimized_hyperparameters,
 )

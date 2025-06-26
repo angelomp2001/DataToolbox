@@ -21,6 +21,7 @@ def hyperparameter_optimizer(
         model_name: str = None,
         model: str = None,
         param_name: str = None,
+        model_params: dict = None,
         low: int = None,
         high: int = None,
         tolerance: float = 0.1
@@ -30,33 +31,42 @@ def hyperparameter_optimizer(
     best_score = -np.inf
     best_param = None
 
-    print(f'Optimizing hyperparameters:\n- Model name:{model_name}')
-    print(f"-- Param {param_name}: {int(round(0))}, Accuracy Score: 0.00%")
-    while high - low > tolerance:
-        mid = (low + high) / 2
+    if model_params is None or model_params.get(model_name).get(param_name) is None:
+        print(f'Optimizing hyperparameters:\n- Model name:{model_name}')
+        print(f"-- Param {param_name}: {int(round(0))}, Accuracy Score: 0.00%")
+        while high - low > tolerance:
+            mid = (low + high) / 2
+            
+            # Set the parameter value
+            params = {param_name: int(round(mid))}
+            model.set_params(**params)
+            
+            # Fit the model        
+            model.fit(train_features, train_target)
+            
+            # Score the model
+            score = model.score(valid_features, valid_target)
+            
+            if score > best_score:
+                best_score = score
+                best_param = int(round(mid))
+                low = mid
+                
+                # Print current param and score for debugging
+                print(f"-- Param {param_name}: {int(round(mid))}, Accuracy Score: {score:.02%}")
+            else:
+                high = mid
         
-        # Set the parameter value
-        params = {param_name: int(round(mid))}
-        model.set_params(**params)
-        
-        # Fit the model        
+        print(f'hyperparameter_optimizer() complete\n')
+        return best_param, best_score
+    else:
+        # fit and score existing parameters
+        model.set_params(**model_params.get(model_name))
         model.fit(train_features, train_target)
-        
-        # Score the model
         score = model.score(valid_features, valid_target)
         
-        if score > best_score:
-            best_score = score
-            best_param = int(round(mid))
-            low = mid
-            
-            # Print current param and score for debugging
-            print(f"-- Param {param_name}: {int(round(mid))}, Accuracy Score: {score:.02%}")
-        else:
-            high = mid
-    
-    print(f'hyperparameter_optimizer() complete\n')
-    return best_param, best_score
+        return model_params, score
+
 
 def best_model_picker(
         features: pd.DataFrame,
@@ -64,6 +74,7 @@ def best_model_picker(
         ordinal_cols: list = None,
         random_state: int = None,
         model_options: dict = None,
+        model_params: dict = None,
         split_ratio: tuple = (),
         missing_values_method: str = None,
         ):
@@ -88,7 +99,7 @@ def best_model_picker(
         }
         
 
-    elif not isinstance(model_options, dict) or not (isinstance(model_options, str) and model_options == 'all'):
+    elif not (isinstance(model_options, dict) or (isinstance(model_options, str) and model_options == 'all')):
         raise ValueError("model_options must be either None or a dictionary.")
     
     # Optimize max_depth for DecisionTreeClassifier
@@ -140,8 +151,10 @@ def best_model_picker(
                     test_target = transformed_data[5]
                 else:
                     test_features, test_target = None, None
-                
 
+            # if model_params is not None:
+            #     model.set_params(**model_params)
+                
             for param_name, param_value in model.get_params().items():
                 if model_name == 'RandomForestClassifier':
                     if param_name == 'max_depth':
@@ -154,6 +167,7 @@ def best_model_picker(
                             model_name=model_name,
                             model=model,
                             param_name=param_name,
+                            model_params=model_params,
                             low=1,
                             high=50,
                             tolerance=0.1
@@ -175,6 +189,7 @@ def best_model_picker(
                             model_name=model_name,
                             model=model,
                             param_name=param_name,
+                            model_params=model_params,
                             low=10,
                             high=100,
                             tolerance=0.1
@@ -189,6 +204,7 @@ def best_model_picker(
                         # log latest best score
                         model_scores[model_name] = rfc_best_score
                     else:
+
                         pass
                     
                     
@@ -205,13 +221,14 @@ def best_model_picker(
                             model_name=model_name,
                             model=model,
                             param_name=param_name,
+                            model_params=model_params,
                             low=1,
                             high=50,
                             tolerance=0.1
                         )
                         
                         # updated optimized hyperparameters log
-                        optimized_hyperparameters.setdefault(model_name, {})[param_name] = {'max_depth': dtc_max_depth}
+                        optimized_hyperparameters.setdefault(model_name, {})[param_name] = dtc_max_depth
 
                         # Update the model with all accumulated optimized parameters
                         model.set_params(**optimized_hyperparameters[model_name])
@@ -219,6 +236,7 @@ def best_model_picker(
                         # log latest best score
                         model_scores[model_name] = dtc_best_score
                     else:
+
                         pass
                     
                     
@@ -244,6 +262,6 @@ def best_model_picker(
     best_model_score = model_scores[best_model_name]
     
     print(f'best_model_picker() complete')
-    return best_model_name, best_model_score, optimized_hyperparameters, transformed_data
+    return model_options, model_scores, optimized_hyperparameters, transformed_data
 
 # reuse best model on test_df to get test results.
