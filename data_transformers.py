@@ -1,9 +1,7 @@
+# from data_transformer import downsample, upsample, ordinal_encoder, missing_values, feature_scaler, categorical_encoder, data_splitter, data_transformer
+
 # input df and requirements, outputs processed df
-# processing: 
-# 1. missing data
-# 2. encoding
-# 3. feature scaling
-# 4. splitting
+# processing: downsample, upsample, ordinal_encoder, missing_values, feature_scaler, categorical_encoder, data_splitter, data_transformer
 
 from sklearn.model_selection import train_test_split
 import pandas as pd
@@ -81,6 +79,7 @@ def downsample(
     # Shuffle the final DataFrame to mix the rows.
     df_downsampled = shuffle(df_downsampled, random_state=random_state).reset_index(drop=True)
     
+    print(f'-- downsample() complete\n')
     return df_downsampled
 
 def upsample(
@@ -157,9 +156,10 @@ def upsample(
     # One final shuffle to mix any duplicated entries
     df_upsampled = shuffle(df_upsampled, random_state=random_state).reset_index(drop=True)
     
+    print(f'-- upsample() complete\n')
     return df_upsampled
 
-def ordinal_encoder(df, ordinal_cols)
+def ordinal_encoder(df, ordinal_cols):
     encoded_values_dict = []
     for col in ordinal_cols:
         print(f'Encoding column: {col}')
@@ -172,7 +172,8 @@ def ordinal_encoder(df, ordinal_cols)
         
         # Store the mapping for potential later use
         encoded_values_dict.append(mapping_dict)
-        
+    
+    print(f'ordinal_encoder() complete\n')
     return df, encoded_values_dict
 
 def missing_values(
@@ -189,7 +190,7 @@ def missing_values(
     Returns:
         pd.DataFrame: The DataFrame after handling missing values.
     """
-    if missing_values_method == 'drop':
+    if missing_values_method == 'drop' or missing_values_method is None:
         df = df.dropna()
     elif missing_values_method == 'fill':
         df = df.fillna(fill_value)
@@ -202,15 +203,17 @@ def missing_values(
     else:
         raise ValueError(f"Unknown method: {missing_values_method}")
     
+    print(f'--- missing_values() complete\n')
     return df
 
-def feature_scaling(df):
+def feature_scaler(df):
     # feature scaling
     for col in df.columns:
         if df[col].dtype in ['int64', 'float64']:
             scaler = StandardScaler()
             df[col] = scaler.fit_transform(df[[col]])
 
+    print(f'--- feature_scaler() complete\n')
     return df
 
 def categorical_encoder(df, model):
@@ -218,6 +221,8 @@ def categorical_encoder(df, model):
         # dummy vars (one-hot encoding) for categorial vars
         df_ohe = pd.get_dummies(df, drop_first=True)
         df = df_ohe
+
+        print(f'-- categorical_encoder() complete\n')
         return df
     elif model == 'DecisionTreeClassifier' or 'RandomForestClassifier':
         # Label Encoding for categorical vars
@@ -225,11 +230,13 @@ def categorical_encoder(df, model):
         encoder.fit_transform(df)
         df_ordinal = pd.DataFrame(encoder.transform(df), columns=df.columns)
         df = df_ordinal
+
+        print(f'--- categorical_encoder() complete\n')
         return df
     
 def data_splitter(
     df: pd.DataFrame,
-    split_ratio: tuple = None,
+    split_ratio: tuple = (),
     target: str = None,
     random_state: int = None,
 ) -> tuple:
@@ -247,19 +254,22 @@ def data_splitter(
             - For two ratios: (train_features, train_target, valid_features, valid_target)
             - For three ratios: (train_features, train_target, valid_features, valid_target, test_features, test_target)
     """
-    if split_ratio is None:
-        raise ValueError("A valid split_ratio must be provided.")
+    if len(split_ratio) == 0 or split_ratio is None:
 
-    if len(split_ratio) == 0:
+        print(f'--- data_splitter() complete\n')
         return df
     
     if len(split_ratio) == 1:
         if split_ratio <= 1:
             df = downsample(df)
+
+            print(f'--- data_splitter() complete\n')
             return df
         
         elif split_ratio > 1:
             df = upsample(df)
+
+            print(f'--- data_splitter() complete\n')
             return df
 
     if len(split_ratio) == 2:
@@ -275,6 +285,7 @@ def data_splitter(
         valid_features = df_valid.drop(target, axis=1)
         valid_target = df_valid[target]
 
+        print(f'--- data_splitter() complete\n')
         return train_features, train_target, valid_features, valid_target
 
     elif len(split_ratio) == 3:
@@ -288,7 +299,7 @@ def data_splitter(
 
         df_train, df_valid = train_test_split(df_temp, test_size=new_val_ratio, random_state=random_state)
 
-        print(f"Shapes:\ndf_train: {df_train.shape}\ndf_valid: {df_valid.shape}\ndf_test: {df_test.shape}")
+        print(f"new data shapes:\ndf_train: {df_train.shape}\ndf_valid: {df_valid.shape}\ndf_test: {df_test.shape}")
 
         train_features = df_train.drop(target, axis=1)
         train_target = df_train[target]
@@ -297,6 +308,7 @@ def data_splitter(
         test_features = df_test.drop(target, axis=1)
         test_target = df_test[target]
 
+        print(f'--- data_splitter() complete\n')
         return train_features, train_target, valid_features, valid_target, test_features, test_target
 
     else:
@@ -305,7 +317,7 @@ def data_splitter(
 def data_transformer(
         df: pd.DataFrame,
         n_rows: int = None,
-        split_ratio: tuple = None,
+        split_ratio: tuple = (),
         target: str = None,
         n_target_majority: Optional[int] = None,
         ordinal_cols: list = None,
@@ -313,7 +325,7 @@ def data_transformer(
         fill_value: any = None,
         random_state: int = None,
         model: str = None,
-        feature_scale: bool = None
+        feature_scaler: bool = None
 
     ): 
     """
@@ -346,7 +358,7 @@ def data_transformer(
 
     # Downsample if applicable
     try:
-        print('1. downsampling...')
+        print('-- downsampling...')
         df = downsample(
             df,
             target,
@@ -355,12 +367,12 @@ def data_transformer(
             random_state,
             missing_values_method,
         )    
-    Exception as e:
-        print(f"(no downsampling): {e}")
+    except Exception as e:
+        pass #print(f"(no downsampling): {e}")
 
     # Upsample if applicable
     try:
-        print('1. upsampling...')
+        print('-- upsampling...')
         df = upsample(
             df,
             target,
@@ -370,66 +382,73 @@ def data_transformer(
             missing_values_method,
         )
     except Exception as e:
-        print(f"(no upsampling): {e}")
+        pass #print(f"(no upsampling): {e}")
 
     # handling missing data
     try:
-        print('1. addressing missing values...')
+        print('-- addressing missing values...')
         df = missing_values(df, missing_values_method, fill_value)
     except Exception as e:
-        print(f"(no missing values): {e}")
+        pass #print(f"(no missing values): {e}")
 
     # Encode ordinal columns if specified
     try:
-        print('1. ordinal encoding...')
+        print('-- ordinal encoding...')
         df, encoded_values_dict = ordinal_encoder(df, ordinal_cols)
 
     except Exception as e:
-        print(f"(no ordinal vars to encode): {e}")
+        pass #print(f"(no ordinal vars to encode): {e}")
 
     # Encode categorial columns: one-hot encoding for regression (regression), Label Encoding for ML
     try:
-        print('1. categorical encoding...')
+        print('-- categorical encoding...')
         df = categorical_encoder(df, model)            
     except Exception as e:
-        print(f"(no categorical vars to encode): {e}")
+        pass #print(f"(no categorical vars to encode): {e}")
 
     # feature scaling for regression models
-    if model == 'LogisticRegression' or None:
-        try:
-            print('1. feature scaling...')
-            df = feature_scaling(df)
-        except Exception as e:
-            print(f"(no feature scaling): {e}")
-    else:
-        pass
+    try:
+        if model == 'LogisticRegression' or None:
+            print('-- feature scaling...')
+            df = feature_scaler(df)
+        else:
+            pass
+    except Exception as e:
+        pass #print(f'(no feature scaling): {e}')
+    
 
     # Split data
     try:
-        print('1. splitting data...')
-        if split_ratio == 0:
+        print('-- splitting data...')
+        if len(split_ratio) == 0:
+            
+            print(f'data_transformer() complete\n')
             return df
         
-        if split_ratio == 1:
+        if len(split_ratio) == 1:
             df = data_splitter(df, split_ratio)
+            
+            print(f'data_transformer() complete\n')
             return df
 
-        if split_ratio == 2:
+        if len(split_ratio) == 2:
             train_features, train_target, valid_features, valid_target = data_splitter(
                 df,
                 split_ratio,
                 target,
                 random_state,
             )
+            print(f'data_transformer() complete\n')
             return train_features, train_target, valid_features, valid_target
-        elif split_ratio == 3:
+        elif len(split_ratio) == 3:
             train_features, train_target, valid_features, valid_target, test_features, test_target = data_splitter(
                 df,
                 split_ratio,
                 target,
                 random_state,
             )
+            print(f'data_transformer() complete\n')
             return train_features, train_target, valid_features, valid_target, test_features, test_target
         
-        except Exception as e:
-        print(f"(no splitting): {e}")
+    except Exception as e:
+        pass #print(f"(no splitting): {e}")
