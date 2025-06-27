@@ -21,11 +21,14 @@ print(f'best_model_picker()...')
 model_options, model_scores, optimized_hyperparameters, data = best_model_picker(
     features = features,
     target = target,
+    n_rows = None,
+    n_target_majority = None,
     ordinal_cols = None,
     random_state = random_state,
     model_options = None,
     split_ratio = (0.6, 0.2, 0.2),
     missing_values_method= None,
+    fill_value = None
 )
 validation_scores = model_scores
 
@@ -42,5 +45,3 @@ model_options, model_scores, _, _ = best_model_picker(
 
 print(f'validation scores: {validation_scores}')
 print(f'test scores: {model_scores}')
-# output is 100% accurate, so it's being fitted and tested on the same data.  I need to fit on training data, and test on test data.  
-# how do I fit on training data in the second interation? I'm only submitting test data.  so it's being  

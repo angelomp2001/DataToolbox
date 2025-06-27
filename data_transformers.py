@@ -211,7 +211,7 @@ def feature_scaler(df):
     for col in df.columns:
         if df[col].dtype in ['int64', 'float64']:
             scaler = StandardScaler()
-            df[col] = scaler.fit_transform(df[[col]])
+            df[col] = scaler.fit_transform(df[col])
 
     print(f'--- feature_scaler() complete\n')
     return df
@@ -348,8 +348,11 @@ def data_transformer(
         If three splits: train_features, train_target, valid_features, valid_target, test_features, test_target.
     """
     # QC parameters
+    if split_ratio is None:
+        split_ratio = ()
+    
     # Validate the length of split_ratio and that the values sum to 1
-    if len(split_ratio) not in [0, 1, 2, 3]:
+    if (len(split_ratio) not in [0, 1, 2, 3]):
         raise ValueError("split_ratio must be a tuple of length 0 (pass), 1 (resample), 2 (train, validate) or 3 (train, validate, test).")
     
     if len(split_ratio) > 2:
