@@ -5,6 +5,9 @@ from data_explorers import view, see
 from data_transformers import downsample, upsample, ordinal_encoder, missing_values, feature_scaler, categorical_encoder, data_splitter, data_transformer
 from best_model_picker import best_model_picker, hyperparameter_optimizer
 from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+
 
 
 # Extract and view
@@ -19,8 +22,8 @@ random_state = 99999
 
 
 model_options = {
-    'Regressions': {
-        'LogisticRegression': LogisticRegression(random_state=random_state, solver='liblinear', max_iter=200)
+    'Machine Learning': {
+        'DecisionTreeClassifier': DecisionTreeClassifier(random_state=random_state)
     }
 }
 

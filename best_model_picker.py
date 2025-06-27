@@ -70,7 +70,7 @@ def hyperparameter_optimizer(
             model_name=model_name,
             threshold=threshold
         )
-        else:
+        else: # if theshold is None
             # Score model on all thresholds <- optimization algorithms like this are the role of this function
             thresholds = np.arange(0.01, 0.99, 0.02)
             metrics = []
@@ -90,7 +90,7 @@ def hyperparameter_optimizer(
                 # log the iteration
                 metrics.append([model_name,threshold, accuracy, precision, recall, f1])
         
-        # save all iterations to scores_df
+            # save all iterations to scores_df
             scores_df = pd.DataFrame(metrics, columns=['Model Name','Threshold', 'Accuracy', 'Precision', 'Recall', 'F1'])
 
             # get max F1 Score and its corresponding metrics
@@ -132,7 +132,7 @@ def hyperparameter_optimizer(
                 )
                 
                 # log the iteration
-                metrics.append([model_name,threshold, accuracy, precision, recall, f1])
+                metrics.append([model_name, threshold, accuracy, precision, recall, f1])
                 
                 # Define metric for optimization
                 score = metrics[metric]
@@ -146,9 +146,13 @@ def hyperparameter_optimizer(
                     print(f"-- Param {param_name}: {int(round(mid))}, Accuracy Score: {score:.02%}")
                 else:
                     high = mid
+                        
+            # save all iterations to scores_df
+            model_scores = pd.concat([model_scores, best_scores], ignore_index=True)
             
             print(f'hyperparameter_optimizer() complete\n')
             return best_param, best_score
+        
         else:
             # fit and score existing parameters
             model.set_params(**model_params.get(model_name))
@@ -163,9 +167,10 @@ def hyperparameter_optimizer(
                 graph_scores=True
                 )
             
-            return accuracy, precision, recall, f1
+            
 
     if graph_scores:
+        model_name, accuracy, precision, recall, f1 = model_scores
         plt.figure(figsize=(8, 6))
         plt.plot(model_scores['Recall'], model_scores['Precision'], label="Precision-Recall Curve")
         plt.scatter(best_recall, best_precision,
@@ -178,6 +183,8 @@ def hyperparameter_optimizer(
         plt.legend()
         plt.grid(True)
         plt.show()
+
+    return accuracy, precision, recall, f1
 
 def best_model_picker(
         features: pd.DataFrame,
@@ -194,6 +201,7 @@ def best_model_picker(
         random_state: int = None,
         model_options: dict = None,
         model_params: dict = None,
+        metric: str = 'f1',
         graph_scores: bool = False,
         ):
     # check and parameters
@@ -294,7 +302,9 @@ def best_model_picker(
                             model_params=model_params,
                             low=1,
                             high=50,
-                            tolerance=0.1
+                            tolerance=0.1,
+                            metric=metric,
+                            graph_scores=graph_scores
                         )
                         
                         # Update optimized hyperparameters
@@ -319,6 +329,7 @@ def best_model_picker(
                             low=10,
                             high=100,
                             tolerance=0.1,
+                            metric=metric,
                             graph_scores=graph_scores
                         )
 
@@ -355,6 +366,7 @@ def best_model_picker(
                             low=1,
                             high=50,
                             tolerance=0.1,
+                            metric=metric,
                             graph_scores=graph_scores
                         )
                             
@@ -388,6 +400,7 @@ def best_model_picker(
                             low=1,
                             high=50,
                             tolerance=0.1,
+                            metric=metric,
                             graph_scores=graph_scores
                         )
 
