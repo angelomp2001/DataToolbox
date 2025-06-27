@@ -1,5 +1,5 @@
-# delete me, I think. work on hyperparameter
-# (scroll down for code)
+# 
+#
 
 import numpy as np
 import pandas as pd
