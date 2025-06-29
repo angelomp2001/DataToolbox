@@ -211,20 +211,20 @@ def feature_scaler(df):
     for col in df.columns:
         if df[col].dtype in ['int64', 'float64']:
             scaler = StandardScaler()
-            df[col] = scaler.fit_transform(df[col])
+            df[col] = scaler.fit_transform(df[[col]])
 
     print(f'--- feature_scaler() complete\n')
     return df
 
-def categorical_encoder(df, model_type):
-    if model_type == 'Regressions' or None:
+def categorical_encoder(df, model_name):
+    if model_name == 'LogisticRegression' or None:
         # dummy vars (one-hot encoding) for categorial vars
         df_ohe = pd.get_dummies(df, drop_first=True)
         df = df_ohe
 
         print(f'-- categorical_encoder() complete\n')
         return df
-    elif model_type == 'Machine Learning':
+    elif model_name == 'DecisionTreeClassifier' or 'RandomForestClassifier':
         # Label Encoding for categorical vars
         encoder = OrdinalEncoder()
         encoder.fit_transform(df)
@@ -324,7 +324,7 @@ def data_transformer(
         missing_values_method: str = None,
         fill_value: any = None,
         random_state: int = None,
-        model_type: str = None,
+        model_name: str = None,
         feature_scaler: bool = None
 
     ): 
@@ -348,11 +348,8 @@ def data_transformer(
         If three splits: train_features, train_target, valid_features, valid_target, test_features, test_target.
     """
     # QC parameters
-    if split_ratio is None:
-        split_ratio = ()
-    
     # Validate the length of split_ratio and that the values sum to 1
-    if (len(split_ratio) not in [0, 1, 2, 3]):
+    if len(split_ratio) not in [0, 1, 2, 3]:
         raise ValueError("split_ratio must be a tuple of length 0 (pass), 1 (resample), 2 (train, validate) or 3 (train, validate, test).")
     
     if len(split_ratio) > 2:
@@ -361,7 +358,7 @@ def data_transformer(
 
     # Downsample if applicable
     try:
-        #print('-- downsampling...')
+        print('-- downsampling...')
         df = downsample(
             df,
             target,
@@ -375,7 +372,7 @@ def data_transformer(
 
     # Upsample if applicable
     try:
-        #print('-- upsampling...')
+        print('-- upsampling...')
         df = upsample(
             df,
             target,
@@ -389,14 +386,14 @@ def data_transformer(
 
     # handling missing data
     try:
-        #print('-- addressing missing values...')
+        print('-- addressing missing values...')
         df = missing_values(df, missing_values_method, fill_value)
     except Exception as e:
         print(f"(no missing values): {e}\n")
 
     # Encode ordinal columns if specified
     try:
-        #print('-- ordinal encoding...')
+        print('-- ordinal encoding...')
         df, encoded_values_dict = ordinal_encoder(df, ordinal_cols)
 
     except Exception as e:
@@ -404,15 +401,15 @@ def data_transformer(
 
     # Encode categorial columns: one-hot encoding for regression (regression), Label Encoding for ML
     try:
-        #print('-- categorical encoding...')
-        df = categorical_encoder(df, model_type)            
+        print('-- categorical encoding...')
+        df = categorical_encoder(df, model_name)            
     except Exception as e:
         print(f"(no categorical vars to encode): {e}\n")
 
     # feature scaling for regression models
     try:
-        if model_type == 'Regressions' or None:
-            #print('-- feature scaling...')
+        if model_name == 'LogisticRegression' or None:
+            print('-- feature scaling...')
             df = feature_scaler(df)
         else:
             pass

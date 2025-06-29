@@ -106,13 +106,7 @@ def view(dfs, view=None):
         print("Invalid view. Available views are: headers, values, dtypes, missing values, summaries, or all.")
 
 
-def see(
-        df: pd.DataFrame,
-        cols: list = None,
-        x: str = None,
-        case: str = None,
-        ):
-    
+def see(df, cols=None, x=None):
     # Determine the x-axis label based on the provided argument or index name
     if x is None:
         try:
@@ -134,31 +128,14 @@ def see(
     # Create a color map for different lines
     color_map = plt.cm.get_cmap('tab10', len(cols))
 
-    if case is None:
-        # Loop through each column and create a separate plot
-        for i, col in enumerate(cols):
-            fig, ax = plt.subplots(figsize=(12, 6))
-            ax.plot(df.index, df[col], label=col, color=color_map(i))
-            ax.set_title(f'{col} by {x_label}')
-            ax.set_xlabel(x_label)
-            ax.set_ylabel(col, color=color_map(i))
-            ax.tick_params(axis='y', labelcolor=color_map(i))
-            ax.grid(True)
-            plt.legend(loc='best')
-            plt.show()
-    # elif case == 'graph_scores':
-        # model_name, accuracy, precision, recall, f1 = model_scores
-        # plt.figure(figsize=(8, 6))
-        # plt.plot(model_scores['Recall'], model_scores['Precision'], label="Precision-Recall Curve")
-        # plt.scatter(best_recall, best_precision,
-        #             color='red',
-        #             label=f'Max F1 = {max_f1:.2f}\nThreshold = {best_threshold:.2f}',
-        #             zorder=5)
-        # plt.xlabel("Recall")
-        # plt.ylabel("Precision")
-        # plt.title("Precision-Recall Curve with Max F1 Indication")
-        # plt.legend()
-        # plt.grid(True)
-        # plt.show()
-    else:
-        pass
+    # Loop through each column and create a separate plot
+    for i, col in enumerate(cols):
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.plot(df.index, df[col], label=col, color=color_map(i))
+        ax.set_title(f'{col} by {x_label}')
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(col, color=color_map(i))
+        ax.tick_params(axis='y', labelcolor=color_map(i))
+        ax.grid(True)
+        plt.legend(loc='best')
+        plt.show()
