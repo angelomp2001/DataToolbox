@@ -8,8 +8,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
-from data_transformers import data_transformer
-from metrics import categorical_scorer
+from data_transformers_v2 import data_transformer
+from metrics_v2 import categorical_scorer
 import matplotlib.pyplot as plt
 
 
