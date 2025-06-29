@@ -18,7 +18,7 @@ random_state = 99999
 
 
 print(f'best_model_picker()...')
-model_options, model_scores, optimized_hyperparameters, data = best_model_picker(
+model_scores, optimized_hyperparameters, data, model_options = best_model_picker(
     features = features,
     target = target,
     n_rows = None,
@@ -30,10 +30,9 @@ model_options, model_scores, optimized_hyperparameters, data = best_model_picker
     missing_values_method= None,
     fill_value = None
 )
-validation_scores = model_scores
 
 print(f'testing all models on test data...')
-model_options, model_scores, _, _ = best_model_picker(
+model_scores, _, _, model_options = best_model_picker(
     features = data[2],
     target = data[3],
     test_features= data[4],
@@ -42,6 +41,3 @@ model_options, model_scores, _, _ = best_model_picker(
     model_options= model_options,
     model_params = optimized_hyperparameters,
 )
-
-print(f'validation scores: {validation_scores}')
-print(f'test scores: {model_scores}')

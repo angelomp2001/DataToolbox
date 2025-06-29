@@ -10,6 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample, shuffle
 from typing import Optional
 
+
 def downsample(
     df: pd.DataFrame,
     target: str = None,
@@ -254,6 +255,7 @@ def data_splitter(
             - For two ratios: (train_features, train_target, valid_features, valid_target)
             - For three ratios: (train_features, train_target, valid_features, valid_target, test_features, test_target)
     """
+    print(f'Running data_splitter()...')
     if len(split_ratio) == 0 or split_ratio is None:
 
         print(f'--- data_splitter() complete\n')
@@ -347,6 +349,7 @@ def data_transformer(
         If two splits: train_features, train_target, valid_features, valid_target.
         If three splits: train_features, train_target, valid_features, valid_target, test_features, test_target.
     """
+    print(f'Running data_transformer()...')
     # QC parameters
     if split_ratio is None:
         split_ratio = ()
@@ -360,43 +363,46 @@ def data_transformer(
             raise ValueError("The elements of split_ratio must sum to 1.")
 
     # Downsample if applicable
-    try:
-        #print('-- downsampling...')
-        df = downsample(
-            df,
-            target,
-            n_target_majority,
-            n_rows,
-            random_state,
-            missing_values_method,
-        )    
-    except Exception as e:
-        print(f"(no downsampling): {e}\n")
+    # I think up/downsampling is duplicated under split_ratio == 1 
+    # try:
+    #     df = downsample(
+    #         df,
+    #         target,
+    #         n_target_majority,
+    #         n_rows,
+    #         random_state,
+    #         missing_values_method,
+    #     )    
+    # except Exception as e:
+    #     print(f"(no downsampling): {e}\n")
 
-    # Upsample if applicable
-    try:
-        #print('-- upsampling...')
-        df = upsample(
-            df,
-            target,
-            n_target_majority,
-            n_rows,
-            random_state,
-            missing_values_method,
-        )
-    except Exception as e:
-        print(f"(no upsampling): {e}\n")
+    # # Upsample if applicable
+    # try:
+    #     df = upsample(
+    #         df,
+    #         target,
+    #         n_target_majority,
+    #         n_rows,
+    #         random_state,
+    #         missing_values_method,
+    #     )
+    # except Exception as e:
+    #     print(f"(no upsampling): {e}\n")
 
+    # apply up/down sample first:
+    if len(split_ratio) == 1:
+            df = data_splitter(df, split_ratio)
+            
+            return df
+    
     # handling missing data
     try:
-        #print('-- addressing missing values...')
         df = missing_values(df, missing_values_method, fill_value)
     except Exception as e:
         print(f"(no missing values): {e}\n")
 
     # Encode ordinal columns if specified
     try:
-        #print('-- ordinal encoding...')
         df, encoded_values_dict = ordinal_encoder(df, ordinal_cols)
 
     except Exception as e:
@@ -404,7 +410,6 @@ def data_transformer(
 
     # Encode categorial columns: one-hot encoding for regression (regression), Label Encoding for ML
     try:
-        #print('-- categorical encoding...')
         df = categorical_encoder(df, model_type)            
     except Exception as e:
         print(f"(no categorical vars to encode): {e}\n")
@@ -412,7 +417,6 @@ def data_transformer(
     # feature scaling for regression models
     try:
         if model_type == 'Regressions' or None:
-            #print('-- feature scaling...')
             df = feature_scaler(df)
         else:
             pass
@@ -422,16 +426,8 @@ def data_transformer(
 
     # Split data
     try:
-        print('-- splitting data...')
         if len(split_ratio) == 0:
-            
-            print(f'data_transformer() complete\n')
-            return df
-        
-        if len(split_ratio) == 1:
-            df = data_splitter(df, split_ratio)
-            
-            print(f'data_transformer() complete\n')
+            print(f'df count: 1')
             return df
 
         if len(split_ratio) == 2:
@@ -441,7 +437,7 @@ def data_transformer(
                 target,
                 random_state,
             )
-            print(f'data_transformer() complete\n')
+            print(f'df count: 4')
             return train_features, train_target, valid_features, valid_target
         
         elif len(split_ratio) == 3:
@@ -451,7 +447,7 @@ def data_transformer(
                 target,
                 random_state,
             )
-            print(f'data_transformer() complete\n')
+            print(f'df count: 6')
             return train_features, train_target, valid_features, valid_target, test_features, test_target
         
     except Exception as e:
