@@ -34,60 +34,76 @@ def downsample(
         pd.DataFrame: A new DataFrame with the requested downsampling applied.
     
     """
+    if n_target_majority is not None or n_rows is not None:
+        # Identify majority (and implicitly minority) using value_counts.
+        target_counts = df[target].value_counts()
+        # Identify the majority label as the one with the highest count
+        majority_label = target_counts.idxmax()
         
-    # Identify majority (and implicitly minority) using value_counts.
-    target_counts = df[target].value_counts()
-    # Identify the majority label as the one with the highest count
-    majority_label = target_counts.idxmax()
-    
-    # Split the DataFrame into majority and non-majority (minority) groups.
-    df_majority = df[df[target] == majority_label]
-    df_minority = df[df[target] != majority_label]
-    
-    # Downsample the majority class if desired_majority is provided.
-    if n_target_majority is not None:
-        if n_target_majority > len(df_majority):
+        # Split the DataFrame into majority and non-majority (minority) groups.
+        df_majority = df[df[target] == majority_label]
+        df_minority = df[df[target] != majority_label]
+        
+        # QC params
+        if n_target_majority >= len(df_majority):
             raise ValueError(
                 f"desired_majority ({n_target_majority}) is greater than the current majority count ({len(df_majority)})."
             )
-        
-        # If equal then no need to downsample
-        if n_target_majority < len(df_majority):
+        elif n_rows > len(df):
+            raise ValueError(f'n_rows larger than df')
+        else:
+            pass
+
+        #downsample
+        if n_target_majority is not None:
+            # downsample target majority
             df_majority = resample(
                 df_majority,
                 replace=False,
                 n_samples=n_target_majority,
                 random_state=random_state
             )
-    
-    # Recombine the groups (minority remains unchanged).
-    df_downsampled = pd.concat([df_majority, df_minority]).reset_index(drop=True)
-    
-    # Downsample overall DataFrame if desired_overall is provided.
-    if n_rows is not None:
-        if n_rows > len(df_downsampled):
-            raise ValueError(
-                f"desired_overall ({n_rows}) is greater than the current total rows ({len(df_downsampled)})."
+            # Recombine the groups (minority remains unchanged).
+            df_downsampled = pd.concat([df_majority, df_minority]).reset_index(drop=True)
+        
+        elif n_rows is not None and n_target_majority is None:
+            #downsample df
+            df_downsampled = resample(
+                    df,
+                    replace=False,
+                    n_samples=n_rows,
+                    random_state=random_state
+                )
+        else:
+            pass
+            
+        if n_target_majority is not None and n_rows is not None:
+            #downsample df_downsampled to n_rows
+            df_downsampled = resample(
+                    df_downsampled,
+                    replace=False,
+                    n_samples=n_rows,
+                    random_state=random_state
             )
-        # Downsample the entire DataFrame while roughly maintaining the class proportions.
-        df_downsampled = resample(
-            df_downsampled,
-            replace=False,
-            n_samples=n_rows,
-            random_state=random_state
-        )
+        else:
+            pass
+        
+        # Shuffle the final DataFrame to mix the rows.
+        df_downsampled = shuffle(df_downsampled, random_state=random_state).reset_index(drop=True)
+        
+        print(f'df_downsampled shape: {df_downsampled.shape}')
+        print(f'--- downsample() complete\n')
+        return df_downsampled
     
-    # Shuffle the final DataFrame to mix the rows.
-    df_downsampled = shuffle(df_downsampled, random_state=random_state).reset_index(drop=True)
-    
-    print(f'-- downsample() complete\n')
-    return df_downsampled
+    else:
+        print(f'(no downsampling)')
+        return df
 
 def upsample(
     df: pd.DataFrame,
     target: str = None,
-    desired_minority: Optional[int] = None,
-    desired_overall: Optional[int] = None,
+    n_target_minority: int = None,
+    n_rows: int = None,
     random_state: int = 12345,
 ) -> pd.DataFrame:
     """
@@ -126,56 +142,65 @@ def upsample(
     df_majority = df[df[target] == majority_label]
     
     # Upsample the minority class if desired number is provided and is larger than current count
-    if desired_minority is not None:
-        if desired_minority < len(df_minority):
+    if n_target_minority is not None:
+        if n_target_minority < len(df_minority):
             raise ValueError(
-                f"desired_minority ({desired_minority}) is less than the current minority count ({len(df_minority)})."
+                f"desired_minority ({n_target_minority}) is less than the current minority count ({len(df_minority)})."
             )
         df_minority = resample(
             df_minority,
             replace=True,
-            n_samples=desired_minority,
+            n_samples=n_target_minority,
             random_state=random_state
         )
     
     # Recombine the classes after upsampling minority if needed
     df_upsampled = pd.concat([df_majority, df_minority]).reset_index(drop=True)
     
-    # Upsample the overall DataFrame if desired_overall is provided
-    if desired_overall is not None:
-        if desired_overall < len(df_upsampled):
+    # Upsample the overall DataFrame if n_rows is provided
+    if n_rows is not None:
+        if n_rows < len(df_upsampled):
             raise ValueError(
-                f"desired_overall ({desired_overall}) is less than the current total rows ({len(df_upsampled)})."
+                f"desired_overall ({n_rows}) is less than the current total rows ({len(df_upsampled)})."
             )
-        df_upsampled = resample(
+        else:
+            df_upsampled = resample(
             df_upsampled,
             replace=True,
-            n_samples=desired_overall,
+            n_samples=n_rows,
             random_state=random_state
         )
     
-    # One final shuffle to mix any duplicated entries
-    df_upsampled = shuffle(df_upsampled, random_state=random_state).reset_index(drop=True)
-    
-    print(f'-- upsample() complete\n')
+    if n_target_minority is not None or n_rows is not None:
+        # One final shuffle to mix any duplicated entries
+        df_upsampled = shuffle(df_upsampled, random_state=random_state).reset_index(drop=True)
+        
+        print(f'df_upsampled shape: {df_upsampled.shape}\n')
+        print(f'-- upsample() complete\n')
+        return df_upsampled
+
+    print(f'(no upsampling)')
     return df_upsampled
 
 def ordinal_encoder(df, ordinal_cols):
-    encoded_values_dict = []
-    for col in ordinal_cols:
-        print(f'Encoding column: {col}')
+    if ordinal_cols is not None:
+        encoded_values_dict = []
+        for col in ordinal_cols:
+            print(f'Encoding column: {col}')
+            
+            # Create a mapping dictionary: each unique value to an integer based on its position
+            unique_values = sorted(df[col].dropna().unique())
+            mapping_dict = {val: idx for idx, val in enumerate(unique_values)}
+            print(f'Mapping values {col}: {mapping_dict}')
+            df[col] = df[col].map(mapping_dict)
+            
+            # Store the mapping for potential later use
+            encoded_values_dict.append(mapping_dict)
         
-        # Create a mapping dictionary: each unique value to an integer based on its position
-        unique_values = sorted(df[col].dropna().unique())
-        mapping_dict = {val: idx for idx, val in enumerate(unique_values)}
-        print(f'Mapping values {col}: {mapping_dict}')
-        df[col] = df[col].map(mapping_dict)
-        
-        # Store the mapping for potential later use
-        encoded_values_dict.append(mapping_dict)
-    
-    print(f'ordinal_encoder() complete\n')
-    return df, encoded_values_dict
+        print(f'ordinal_encoder() complete\n')
+        return df, encoded_values_dict
+    else:
+        return df, None
 
 def missing_values(
         df: pd.DataFrame,
@@ -191,7 +216,7 @@ def missing_values(
     Returns:
         pd.DataFrame: The DataFrame after handling missing values.
     """
-    if missing_values_method == 'drop' or missing_values_method is None:
+    if missing_values_method == 'drop':
         df = df.dropna()
     elif missing_values_method == 'fill':
         df = df.fillna(fill_value)
@@ -201,9 +226,13 @@ def missing_values(
         df = df.fillna(df.median())
     elif missing_values_method == 'mode':
         df = df.fillna(df.mode().iloc[0])
+    elif missing_values_method is None:
+        print(f'(no missing values method applied)')
+        return df
     else:
         raise ValueError(f"Unknown method: {missing_values_method}")
     
+    print(f'df shape: {df.shape}')
     print(f'--- missing_values() complete\n')
     return df
 
@@ -218,7 +247,7 @@ def feature_scaler(df):
     return df
 
 def categorical_encoder(df, model_type):
-    if model_type == 'Regressions' or None:
+    if model_type == 'Regressions':
         # dummy vars (one-hot encoding) for categorial vars
         df_ohe = pd.get_dummies(df, drop_first=True)
         df = df_ohe
@@ -233,6 +262,10 @@ def categorical_encoder(df, model_type):
         df = df_ordinal
 
         print(f'--- categorical_encoder() complete\n')
+        return df
+    
+    else:
+        print(f'(no categorical encoder applied)')
         return df
     
 def data_splitter(
@@ -257,11 +290,10 @@ def data_splitter(
     """
     print(f'Running data_splitter()...')
     if len(split_ratio) == 0 or split_ratio is None:
-
-        print(f'--- data_splitter() complete\n')
+        print(f'(no splitting)')
         return df
     
-    if len(split_ratio) == 1:
+    elif len(split_ratio) == 1:
         if split_ratio <= 1:
             df = downsample(df)
 
@@ -274,7 +306,7 @@ def data_splitter(
             print(f'--- data_splitter() complete\n')
             return df
 
-    if len(split_ratio) == 2:
+    elif len(split_ratio) == 2:
         train_ratio, val_ratio = split_ratio
 
         # Split data into training and validation sets.
@@ -318,17 +350,17 @@ def data_splitter(
 
 def data_transformer(
         df: pd.DataFrame,
-        n_rows: int = None,
         split_ratio: tuple = (),
         target: str = None,
-        n_target_majority: Optional[int] = None,
+        n_target_majority: int = None,
+        n_target_minority: int = None,
+        n_rows: int = None,
         ordinal_cols: list = None,
         missing_values_method: str = None,
         fill_value: any = None,
         random_state: int = None,
         model_type: str = None,
-        feature_scaler: bool = None
-
+        scale_features: bool = True
     ): 
     """
     data splitter, encoding, based on desired data for modeling.   
@@ -350,6 +382,7 @@ def data_transformer(
         If three splits: train_features, train_target, valid_features, valid_target, test_features, test_target.
     """
     print(f'Running data_transformer()...')
+    print(f'df shape start: {df.shape}')
     # QC parameters
     if split_ratio is None:
         split_ratio = ()
@@ -362,66 +395,48 @@ def data_transformer(
         if not abs(sum(split_ratio) - 1.0) < 1e-6:
             raise ValueError("The elements of split_ratio must sum to 1.")
 
-    # Downsample if applicable
-    # I think up/downsampling is duplicated under split_ratio == 1 
-    # try:
-    #     df = downsample(
-    #         df,
-    #         target,
-    #         n_target_majority,
-    #         n_rows,
-    #         random_state,
-    #         missing_values_method,
-    #     )    
-    # except Exception as e:
-    #     print(f"(no downsampling): {e}\n")
+    #Downsample if applicable
+    #for when downsampling params are provided.  it's done again if split ratio < 1.  
+    df = downsample(
+        df,
+        target,
+        n_target_majority,
+        n_rows,
+        random_state
+    )    
 
-    # # Upsample if applicable
-    # try:
-    #     df = upsample(
-    #         df,
-    #         target,
-    #         n_target_majority,
-    #         n_rows,
-    #         random_state,
-    #         missing_values_method,
-    #     )
-    # except Exception as e:
-    #     print(f"(no upsampling): {e}\n")
+    # Upsample if params provided.  duplicated again if split ratio > 1. 
+    df = upsample(
+        df,
+        target,
+        n_target_minority,
+        n_rows,
+        random_state,
+    )
 
     # apply up/down sample first:
     if len(split_ratio) == 1:
             df = data_splitter(df, split_ratio)
-            
             return df
+    else:
+        pass
     
     # handling missing data
-    try:
-        df = missing_values(df, missing_values_method, fill_value)
-    except Exception as e:
-        print(f"(no missing values): {e}\n")
+    df = missing_values(df, missing_values_method, fill_value)
 
     # Encode ordinal columns if specified
-    try:
-        df, encoded_values_dict = ordinal_encoder(df, ordinal_cols)
-
-    except Exception as e:
-        print(f"(no ordinal vars to encode): {e}\n")
+    df, encoded_values_dict = ordinal_encoder(df, ordinal_cols)
 
     # Encode categorial columns: one-hot encoding for regression (regression), Label Encoding for ML
-    try:
-        df = categorical_encoder(df, model_type)            
-    except Exception as e:
-        print(f"(no categorical vars to encode): {e}\n")
+    df = categorical_encoder(df, model_type)            
 
     # feature scaling for regression models
-    try:
-        if model_type == 'Regressions' or None:
-            df = feature_scaler(df)
-        else:
-            pass
-    except Exception as e:
-        print(f'(no feature scaling): {e}\n')
+    if scale_features is False:
+        pass
+    elif scale_features is True and model_type == 'Regressions' or None:
+        df = feature_scaler(df)
+    else:
+        pass
     
 
     # Split data

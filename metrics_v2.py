@@ -28,6 +28,6 @@ def categorical_scorer(
         accuracy = (TP + TN) / (TP + TN + FP + FN) if (TP + TN + FP + FN) > 0 else 0
         precision = TP / (TP + FP) if (TP + FP) > 0 else 0
         recall = TP / (TP + FN) if (TP + FN) > 0 else 0
-        f1 = 2 / ((1 / precision) + (1 / recall)) if (precision + recall) > 0 else 0
+        f1 = 2 / ((1 / precision) + (1 / recall)) if (precision and recall) > 0 else 0
 
         return accuracy, precision, recall, f1
