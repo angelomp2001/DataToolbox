@@ -124,7 +124,7 @@ Model Name    LogisticRegression
 Accuracy                0.713029
 '''
 
-pdb.set_trace() # pauses code
+#pdb.set_trace() # pauses code
 
 # upsampling
 print(f'upsampling...')
@@ -143,7 +143,7 @@ model_options, model_scores, optimized_hyperparameters, data = best_model_picker
     metric=metric
 )
 upsampling_scores = model_scores
-pdb.set_trace() # pauses code
+#pdb.set_trace() # pauses code
 # downsampling
 print(f'downsampling...')
 model_options, model_scores, optimized_hyperparameters, data = best_model_picker(
@@ -161,7 +161,7 @@ model_options, model_scores, optimized_hyperparameters, data = best_model_picker
     metric=metric
 )
 downsampling_scores = model_scores
-pdb.set_trace() # pauses code
+#pdb.set_trace() # pauses code
 # threshold adjustment
 print(f'threshold adjustment...')
 model_options, model_scores, optimized_hyperparameters, data = best_model_picker(

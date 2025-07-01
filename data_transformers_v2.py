@@ -45,11 +45,11 @@ def downsample(
         df_minority = df[df[target] != majority_label]
         
         # QC params
-        if n_target_majority >= len(df_majority):
+        if n_target_majority is not None and n_target_majority >= len(df_majority):
             raise ValueError(
                 f"desired_majority ({n_target_majority}) is greater than the current majority count ({len(df_majority)})."
             )
-        elif n_rows > len(df):
+        elif n_rows is not None and n_rows > len(df):
             raise ValueError(f'n_rows larger than df')
         else:
             pass
@@ -60,7 +60,7 @@ def downsample(
             df_majority = resample(
                 df_majority,
                 replace=False,
-                n_samples=n_target_majority,
+                n_samples=int(n_target_majority),
                 random_state=random_state
             )
             # Recombine the groups (minority remains unchanged).
@@ -150,7 +150,7 @@ def upsample(
         df_minority = resample(
             df_minority,
             replace=True,
-            n_samples=n_target_minority,
+            n_samples=int(n_target_minority),
             random_state=random_state
         )
     
