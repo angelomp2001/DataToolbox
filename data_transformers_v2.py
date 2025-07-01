@@ -161,7 +161,7 @@ def upsample(
     if n_rows is not None:
         if n_rows < len(df_upsampled):
             raise ValueError(
-                f"desired_overall ({n_rows}) is less than the current total rows ({len(df_upsampled)})."
+                f"desired_overall ({n_rows}) is less than or equal to the current total rows ({len(df_upsampled)})."
             )
         else:
             df_upsampled = resample(
@@ -178,8 +178,10 @@ def upsample(
         print(f'df_upsampled shape: {df_upsampled.shape}\n')
         print(f'-- upsample() complete\n')
         return df_upsampled
+    
+    else:
 
-    print(f'(no upsampling)')
+        print(f'(no upsampling)')
     return df_upsampled
 
 def ordinal_encoder(df, ordinal_cols):
@@ -289,6 +291,7 @@ def data_splitter(
             - For three ratios: (train_features, train_target, valid_features, valid_target, test_features, test_target)
     """
     print(f'Running data_splitter()...')
+    print(f'df shape start: {df.shape}')
     if len(split_ratio) == 0 or split_ratio is None:
         print(f'(no splitting)')
         return df
