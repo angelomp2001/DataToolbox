@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 
 #model_picker parameter optimizer.  Have to put this first to make the model_picker run right.  
-def model_score_optimizer(
+def optimizer(
         train_features: pd.DataFrame,
         train_target: pd.Series,
         valid_features: pd.DataFrame,
@@ -74,12 +74,12 @@ def model_score_optimizer(
             for col in metric:
                 # optimization algo for hyperparameters
                 while high - low > tolerance:
-                    #print(f'-- While high-low: {high-low}')
+
                     mid = (low + high) / 2
                     
                     # Set the parameter value
                     params = {param_name: int(round(mid))}
-                    #print(f'-- params: {params}')
+                    
                     model.set_params(**params)
                     
                     # Re/Fit the model when hyperparams exist
@@ -93,7 +93,7 @@ def model_score_optimizer(
                     accuracy, precision, recall, f1 = categorical_scorer(
                         target=score_target,
                         y_pred=y_pred[:, 1],
-                        target_threshold=0.5 # keep constant for optimizing hyperparameters
+                        target_threshold=0.5 # keep constant b/c we are optimizing hyperparameters
                     )
 
                     # log the iteration
@@ -123,11 +123,13 @@ def model_score_optimizer(
                 # get metrics of best param
                 metrics_df = pd.DataFrame(metrics,columns=metric_columns)
             
-                print(f'{model_params=}')
+                
                 
 ############################################################ return  starts here #####################################
+                # Depending on what user asks for, it returns either all the metrics, or the one they ask for. 
                 if metric is None or len(metric) > 1:
-                    return model_params, None, metrics_df
+                    pass
+                    #return model_params, None, metrics_df
                 else:
 
                     # get best scores of best param
@@ -135,11 +137,11 @@ def model_score_optimizer(
 
                     # save all iterations to scores_df
                     model_scores = pd.concat([model_scores, best_scores], ignore_index=True)
-                    # print(f'model_scores:\n{model_scores.tail()}')
+                    
 
                     print(f'model_score_optimizer() complete\n')
-                    return model_params, best_score, model_scores
-#########################################################################################      
+                    #return model_params, best_score, model_scores
+#########################################return ends here ################################################      
         else:
             # fit and score existing parameters
             print(f'setting provided params: {model_params.get(model_name)}')
@@ -177,28 +179,19 @@ def model_score_optimizer(
 
             # get best scores of best param
             best_scores = metrics_df.loc[metrics_df[metric] == best_score]
-            
-######################### return starts here ###################################
-            
-
-            if metric is None or len(metric) > 1:
-                return None, None, metrics_df
-            else:
-                print(f'hyperparameter_optimizer() complete\n')
-                return model_params, best_score, best_scores
-###########################################################################
 
     # Algo: optimize threshold when target_classification
     if target_type == 'classification':
-        
-        # ML would be fit by now, but not regressions
-        if model_type != 'Machine Learning':
+
+        # current model.fit includes hyperparamers. resetting for Regressions 
+        if model_type == 'Regressions':
             model.fit(train_features, train_target)
         else:
             pass
-
+    
+        #output all target thresholds if none is provided.   
         if target_threshold is not None:
-            #print(f'target_threshold is not None')
+            
             # Score model just on this target_threshold
             y_pred = model.predict_proba(score_features)
 
@@ -218,16 +211,18 @@ def model_score_optimizer(
                 "Recall": recall,
                 "F1": f1
             }
-
             
-
             row_values = pd.DataFrame([row_data])
             model_scores = pd.concat([model_scores, row_values], ignore_index=True)
 
-        else: # if theshold is None
-            # Score model on all thresholds <- optimization algorithms like this are the role of this function
-            thresholds = np.arange(0.01, 0.99, 0.02)
 
+######### ML with no target threshold ####################
+        else: # if theshold is None
+            # ML models are not getting to this branch, why?
+            # Score model on all thresholds <- optimization algorithms like this are the role of this function
+            print(f'testing all thresholds...')
+            thresholds = np.arange(0.01, 0.99, 0.02)
+            
             for threshold in thresholds:
                 y_pred = model.predict_proba(score_features)
                 
@@ -247,12 +242,12 @@ def model_score_optimizer(
                     "Recall": recall,
                     "F1": f1
                 }
+                # ML are coming through and threshold is being logged. 
+
 
                 row_values = pd.DataFrame([row_data])
                 model_scores = pd.concat([model_scores, row_values], ignore_index=True)
-        
-        # save all iterations to scores_df
-        # metrics_df = pd.DataFrame(model_scores, columns=metric_columns)
+
 ##########################################################################################
         if metric is None or len(metric) > 1:
             return None, None, model_scores
@@ -266,7 +261,7 @@ def model_score_optimizer(
             # log best score
             model_scores = pd.concat([model_scores, best_scores], ignore_index=True)
             
-            print(f'model_score_optimizer() complete\n')
+            print(f'optimizer() complete\n')
             return best_target_threshold, best_score, best_scores            
 #############################################################################################        
     else:
@@ -326,7 +321,7 @@ def best_model_picker(
     # Data Transformation: Loop through model types to transform data by model type
     
     for model_type, models in model_options.items():
-        print(f'for model_type: {model_type}')
+        
 
         # Transform data
         print(f'- data_transformer()...')
@@ -375,15 +370,17 @@ def best_model_picker(
         for model_name, model in models.items():
             
             if model_name == 'RandomForestClassifier':
+                
                 if model_params is not None and model_name in model_params:
                     params_to_iterate = model_params[model_name].items()
-                    print(f'provided params to iterate: {params_to_iterate}')
+                    
                 else:
                     params_to_iterate = model.get_params().items()
   
                 for param_name, param_value in params_to_iterate:        
                     if param_name == 'max_depth':
-                        rfc_max_depth, _, _ = model_score_optimizer(
+                        print(f'-- hyperparameter_optimizer(max_depth)...')
+                        rfc_max_depth, _, _ = optimizer(
                             train_features=train_features,
                             train_target=train_target,
                             valid_features=valid_features,
@@ -403,7 +400,7 @@ def best_model_picker(
                             target_type = target_type,
                             graph_scores=graph_scores
                         )
-                        print(f'{rfc_max_depth=}')
+                        
                         # Update optimized hyperparameters
                         optimized_hyperparameters.setdefault(model_name, {})[param_name] = rfc_max_depth
 
@@ -412,7 +409,7 @@ def best_model_picker(
 
                     elif param_name == 'n_estimators':
                         print(f'-- hyperparameter_optimizer(n_estimators)...')
-                        rfc_n_estimators, _, rfc_scores = model_score_optimizer(
+                        rfc_n_estimators, _, rfc_scores = optimizer(
                             train_features=train_features,
                             train_target=train_target,
                             valid_features=valid_features,
@@ -432,7 +429,7 @@ def best_model_picker(
                             target_type = target_type,
                             graph_scores=graph_scores
                         )
-                        print(f'{rfc_n_estimators=}')
+                        
                         # Update optimized hyperparameters
                         optimized_hyperparameters.setdefault(model_name, {})[param_name] = rfc_n_estimators
 
@@ -448,11 +445,11 @@ def best_model_picker(
                         pass
 
             elif model_name == 'DecisionTreeClassifier':
-
+                
                 for param_name, param_value in model.get_params().items():
                     if param_name == 'max_depth':
                         
-                        dtc_max_depth, _, dtc_best_scores = model_score_optimizer(
+                        dtc_max_depth, _, dtc_best_scores = optimizer(
                             train_features=train_features,
                             train_target=train_target,
                             valid_features=valid_features,
@@ -472,7 +469,7 @@ def best_model_picker(
                             target_type = target_type,
                             graph_scores=graph_scores
                         )
-                        print(f'{dtc_max_depth=}')
+                        
                         # updated optimized hyperparameters log
                         optimized_hyperparameters.setdefault(model_name, {})[param_name] = dtc_max_depth
 
@@ -489,7 +486,7 @@ def best_model_picker(
 
             elif model_name == 'LogisticRegression':
                 
-                lr_best_target_threshold, lr_best_score, lr_best_scores = model_score_optimizer(
+                lr_best_target_threshold, lr_best_score, lr_best_scores = optimizer(
                             train_features=train_features,
                             train_target=train_target,
                             valid_features=valid_features,
@@ -519,11 +516,10 @@ def best_model_picker(
     
 ##############################################################################################    
     # Model scores summary
-    #print(f'Model scores summary:\nmodel_scores:\n{model_scores}')
 
 
     if metric is None or len(metric) > 1:
-        # Create a summary table
+        # Create a summary table by score
         best_model_scores = []
 
         for score_name in model_scores.columns[2:]:
@@ -532,15 +528,40 @@ def best_model_picker(
             model_name = model_scores.loc[best_score_index, 'Model Name']
             best_model_scores.append({
                 'Metric Name': score_name,
+                'Threshold': model_scores.loc[best_score_index, 'Threshold'],
                 'Best Score': best_score,
                 'Model Name': model_name
             })
 
+        # print best scores summary table
         best_scores_summary_df = pd.DataFrame(best_model_scores)
-        print(best_scores_summary_df)
+        print(f'best_scores_summary_df:\n{best_scores_summary_df}')
+
+        # create a summary table by model
+        best_scores_by_model = []
+
+        for each_model in model_scores['Model Name'].unique():
+            for score_name in model_scores.columns[2:]:  # Assuming columns[2:] are metric columns
+                # Get best score
+                best_score = model_scores[model_scores['Model Name'] == each_model][score_name].max()
+
+                # get best score corresponding threshold
+                best_threshold = model_scores.loc[model_scores[score_name] == best_score, 'Threshold'].iloc[0]
+                
+                # Append to the results table
+                best_scores_by_model.append({
+                    'Model Name': each_model,
+                    'Threshold': best_threshold,
+                    'Metric': score_name,
+                    'Score': best_score
+                })
+
+            best_scores_by_model_df = pd.DataFrame(best_scores_by_model)
+            print(f'best_scores_by_model_df:\n{best_scores_by_model_df}')
+
 
         # the optimizied parameters is empty
-        return best_scores_summary_df, optimized_hyperparameters, transformed_data, model_options
+        return best_scores_summary_df, optimized_hyperparameters, best_scores_by_model_df, model_scores, transformed_data, model_options
 
     else:
 
@@ -550,6 +571,6 @@ def best_model_picker(
     
         print(f'best model scores:\n{best_model_scores}')
         print(f'best_model_picker() complete')
-        return best_model_scores, optimized_hyperparameters, transformed_data, model_options
+        return best_model_scores, optimized_hyperparameters, None, model_scores, transformed_data, model_options
 
 # reuse best model on test_df to get test results.   
