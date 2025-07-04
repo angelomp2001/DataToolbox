@@ -2,6 +2,9 @@
 import pandas as pd
 import numpy as np
 from metrics_v2 import categorical_scorer
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_auc_score, average_precision_score
+
 
 def optimizer(
         train_features: pd.DataFrame,
@@ -47,7 +50,7 @@ def optimizer(
 
     # Initialize variables
     best_score = -np.inf
-    metric_columns=["Model Name", "Threshold", "Accuracy", "Precision", "Recall", "F1"]
+    metric_columns=["Model Name", "Threshold", "Accuracy", "Precision", "Recall", "F1", "ROC AUC", "PR AUC"]
     metrics = pd.DataFrame(columns=metric_columns)
 
     "designate test df"
@@ -100,6 +103,9 @@ def optimizer(
                     # Predict target
                     y_pred = model.predict_proba(score_features)
                     
+                    roc_auc = roc_auc_score(score_target, y_pred[:, 1])
+                    pr_auc = average_precision_score(score_target, y_pred[:, 1])
+                    
                     # score prediction
                     accuracy, precision, recall, f1 = categorical_scorer(
                         target=score_target,
@@ -114,7 +120,9 @@ def optimizer(
                         "Accuracy": accuracy,
                         "Precision": precision,
                         "Recall": recall,
-                        "F1": f1
+                        "F1": f1,
+                        "ROC AUC": roc_auc,
+                        "PR AUC": pr_auc
                     }
 
                     row_values = pd.DataFrame([row_data])
@@ -173,6 +181,9 @@ def optimizer(
             # Predict Target
             y_pred = model.predict_proba(score_features)
             
+            roc_auc = roc_auc_score(score_target, y_pred[:, 1])  
+            pr_auc = average_precision_score(score_target, y_pred[:, 1]) 
+            
             # Score Target
             accuracy, precision, recall, f1 = categorical_scorer(
                 target=score_target,
@@ -187,7 +198,9 @@ def optimizer(
                 "Accuracy": accuracy,
                 "Precision": precision,
                 "Recall": recall,
-                "F1": f1
+                "F1": f1,
+                "ROC AUC": roc_auc,
+                "PR AUC": pr_auc
             }
 
             row_values = pd.DataFrame([row_data])
@@ -235,6 +248,10 @@ def optimizer(
             for threshold in thresholds:
                 y_pred = model.predict_proba(score_features)
                 
+                roc_auc = roc_auc_score(score_target, y_pred[:, 1])  ###############
+                pr_auc = average_precision_score(score_target, y_pred[:, 1]) ###################
+                
+                
                 # scorer is just meant to score(target, y_pred)
                 accuracy, precision, recall, f1 = categorical_scorer(
                     target=score_target,
@@ -249,7 +266,9 @@ def optimizer(
                     "Accuracy": accuracy,
                     "Precision": precision,
                     "Recall": recall,
-                    "F1": f1
+                    "F1": f1,
+                    "ROC AUC": roc_auc,
+                    "PR AUC": pr_auc
                 }
 
                 row_values = pd.DataFrame([row_data])
@@ -343,3 +362,9 @@ def optimizer(
                 return target_threshold, None, metrics #(313) ✅
             else:
                 return target_threshold, best_score, all_target_threshold_scores #(325) ✅
+            
+'''
+model_level_summary score table
+roc_auc = roc_auc_score(score_target, y_pred_proba)
+pr_auc = average_precision_score(score_target, y_pred_proba)
+'''

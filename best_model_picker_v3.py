@@ -12,6 +12,7 @@ from data_transformers_v3 import data_transformer
 from metrics_v2 import categorical_scorer
 import matplotlib.pyplot as plt
 from optimizer import optimizer
+from sklearn.metrics import roc_auc_score, average_precision_score
 
 
 def best_model_picker(
@@ -307,13 +308,17 @@ def best_model_picker(
 
                 # get best score corresponding threshold
                 best_threshold = model_scores.loc[model_scores[score_name] == best_score, 'Threshold'].iloc[0]
+                best_roc_auc = model_scores.loc[model_scores[score_name] == best_score, 'ROC AUC'].iloc[0]
+                best_pr_auc = model_scores.loc[model_scores[score_name] == best_score, 'PR AUC'].iloc[0]
                 
                 # Append to the results table
                 best_scores_by_model.append({
                     'Model Name': each_model,
                     'Threshold': best_threshold,
                     'Metric': score_name,
-                    'Score': best_score
+                    'Score': best_score,
+                    'ROC AUC': best_roc_auc,
+                    'PR AUC': best_pr_auc
                 })
 
         best_scores_by_model_df = pd.DataFrame(best_scores_by_model)
@@ -323,7 +328,10 @@ def best_model_picker(
         pd.set_option('display.width', 1000)           # Make sure the console is wide enough to avoid wrapping
         pd.set_option('display.colheader_justify', 'left') # Align column headers for better readability
         print(f'model_scores:\n{model_scores}')
-
+        pd.reset_option('display.max_rows')
+        pd.reset_option('display.max_columns')
+        pd.reset_option('display.width')
+        pd.reset_option('display.colheader_justify')
 
         
         print(f'optimized_hyperparameters: {optimized_hyperparameters}')
