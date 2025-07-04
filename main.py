@@ -1,15 +1,17 @@
 #everything starts here
 import pandas as pd
 import matplotlib.pyplot as plt
-from data_explorers_v2 import view, see
-from data_transformers_v2 import downsample, upsample, ordinal_encoder, missing_values, feature_scaler, categorical_encoder, data_splitter, data_transformer
-from best_model_picker_v2 import optimizer, best_model_picker
+from data_explorers_v3 import view, see
+from data_transformers_v3 import downsample, upsample, ordinal_encoder, missing_values, feature_scaler, categorical_encoder, data_splitter, data_transformer
+from best_model_picker_v3 import optimizer, best_model_picker
 from metrics_v2 import categorical_scorer
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 import sys
 import pdb
+import inspect
+
 '''
 Project instructions
 1. Download and prepare the data. Explain the procedure.
@@ -45,19 +47,19 @@ random_state = 99999
 
 model_options = {
             'Regressions': {
-                'LogisticRegression': LogisticRegression(random_state=random_state, solver='liblinear', max_iter=200)},
+                #'LogisticRegression': LogisticRegression(random_state=random_state, solver='liblinear', max_iter=200)},
             'Machine Learning': {
                 'DecisionTreeClassifier': DecisionTreeClassifier(random_state=random_state),
                 'RandomForestClassifier': RandomForestClassifier(random_state=random_state),
                 
             }
         }
-
+}
 metric = None
 
 #raw
 print(f'raw...')
-best_scores_summary_df, optimized_hyperparameters, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
+best_scores_summary_df, _, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
     features = features,
     target = target,
     n_target_majority = None,
@@ -119,7 +121,7 @@ model_options = {
 }
 
 print(f'class weight adjustment...')
-best_scores_summary_df, optimized_hyperparameters, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
+best_scores_summary_df, _, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
     features = features,
     target = target,
     n_rows = None,
@@ -151,7 +153,7 @@ lr_balanced_validation_scores = model_scores
 
 # upsampling
 print(f'upsampling...')
-best_scores_summary_df, optimized_hyperparameters, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
+best_scores_summary_df, _, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
     features = features,
     target = target,
     n_rows = None,
@@ -192,7 +194,7 @@ upsampling_scores = model_scores
 '''
 # downsampling
 print(f'downsampling...')
-best_scores_summary_df, optimized_hyperparameters, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
+best_scores_summary_df, _, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
     features = features,
     target = target,
     n_rows = 4000,
@@ -208,7 +210,7 @@ best_scores_summary_df, optimized_hyperparameters, best_scores_by_model, model_s
     metric=metric
 )
 downsampling_scores = model_scores
-#pdb.set_trace() # pauses code
+
 '''
   Metric Name  Threshold  Best Score              Model Name
 0    Accuracy        0.5    0.857339  RandomForestClassifier
@@ -232,7 +234,7 @@ downsampling_scores = model_scores
 '''
 # threshold adjustment
 print(f'threshold adjustment...')
-best_scores_summary_df, optimized_hyperparameters, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
+best_scores_summary_df, _, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
     features = features,
     target = target,
     n_rows = None,
@@ -246,10 +248,7 @@ best_scores_summary_df, optimized_hyperparameters, best_scores_by_model, model_s
     metric=metric,
     target_type='classification',
     target_threshold=None,
-    #model_params={'Machine Learning': {'DecisionTreeClassifier': {'max_depth': 16}}}
 )
-
-#threshold_scores = best_scores_summary_df
 
 '''
   Metric Name  Threshold  Best Score              Model Name
@@ -332,7 +331,7 @@ Optimizing the threshold improved precision and recall, but lowered F1.  Maybe M
 '''
 
 "with target threshold at 0.5"
-best_scores_summary_df, optimized_hyperparameters, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
+best_scores_summary_df, _, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
     features = features,
     target = target,
     n_rows = 4037,
@@ -373,6 +372,7 @@ best_scores_summary_df, optimized_hyperparameters, best_scores_by_model, model_s
     target_type='classification',
     target_threshold=None,
 )
+
 '''
   Metric Name  Threshold  Best Score              Model Name
 0    Accuracy       0.43    0.904054  RandomForestClassifier
@@ -386,3 +386,19 @@ Best model was RandomForestClassifier:
 - sequentially optimized hyperparameters
 - optimized threshold to 0.39.  
 '''
+
+# applying all models but with optimal hyperparameters to test set:
+print(f'testing all models on test data...')
+best_scores_summary_df, optimized_hyperparameters, best_scores_by_model_df, model_scores, transformed_data, model_options = best_model_picker(
+    features = transformed_data[2],
+    target = transformed_data[3],
+    test_features= transformed_data[4],
+    test_target= transformed_data[5],
+    random_state = random_state,
+    model_options= model_options,
+    model_params = optimized_hyperparameters,
+    target_threshold = None,
+    missing_values_method= 'drop',
+    metric=metric,
+    target_type='classification',
+)

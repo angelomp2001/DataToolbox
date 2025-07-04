@@ -385,7 +385,7 @@ def data_transformer(
         If three splits: train_features, train_target, valid_features, valid_target, test_features, test_target.
     """
     print(f'Running data_transformer()...')
-    print(f'df shape start: {df.shape}')
+    #print(f'df shape start: {df.shape}')
     # QC parameters
     if split_ratio is None:
         split_ratio = ()
