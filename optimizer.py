@@ -50,8 +50,11 @@ def optimizer(
 
     # Initialize variables
     best_score = -np.inf
-    metric_columns=["Model Name", "Threshold", "Accuracy", "Precision", "Recall", "F1", "ROC AUC", "PR AUC"]
-    metrics = pd.DataFrame(columns=metric_columns)
+    hyperparameter_table = pd.DataFrame()
+    threshold_table = pd.DataFrame()
+    metrics = ["Accuracy", "Precision", "Recall", "F1", "ROC AUC", "PR AUC"]
+    # metric_columns=["Model Name", "Parameter", "Accuracy", "Precision", "Recall", "F1", "ROC AUC", "PR AUC"]
+    # metrics = pd.DataFrame(columns=metric_columns)
 
     "designate test df"
     if test_features is not None and test_target is not None:
@@ -75,12 +78,14 @@ def optimizer(
 
             "if metric is not provided"
             if metric is None:
-                metric = metric_columns[2:]
+                metric = metrics
             elif not isinstance(metric, list):
                 metric = [metric]
 
             "optimize a hyperparameter"
             # Algo for hyperparameter optimization
+            threshold = 0.5 #keep constant while optimizing hyperparameters
+
             for col in metric:
 
                 while high - low > tolerance:
@@ -103,20 +108,23 @@ def optimizer(
                     # Predict target
                     y_pred = model.predict_proba(score_features)
                     
-                    roc_auc = roc_auc_score(score_target, y_pred[:, 1])
-                    pr_auc = average_precision_score(score_target, y_pred[:, 1])
-                    
                     # score prediction
                     accuracy, precision, recall, f1 = categorical_scorer(
                         target=score_target,
                         y_pred=y_pred[:, 1],
-                        threshold=0.5 # keep constant b/c we are optimizing hyperparameters
+                        threshold=threshold 
                     )
+
+                    #AUC values
+                    roc_auc = roc_auc_score(score_target, y_pred[:, 1])
+                    pr_auc = average_precision_score(score_target, y_pred[:, 1])
 
                     # log this iteration
                     row_data = {
                         "Model Name": model_name,
-                        "Threshold": 0.5, # keep constant b/c we are optimizing hyperparameters
+                        "Parameter Name": param_to_optimize,
+                        "Threshold": threshold, # keep constant b/c we are optimizing hyperparameters"
+                        "Parameter": mid, 
                         "Accuracy": accuracy,
                         "Precision": precision,
                         "Recall": recall,
@@ -126,7 +134,7 @@ def optimizer(
                     }
 
                     row_values = pd.DataFrame([row_data])
-                    metrics = pd.concat([metrics, row_values], ignore_index=True)
+                    hyperparameter_table = pd.concat([hyperparameter_table, row_values], ignore_index=True)
                     
                     # Choose metric for optimization
                     score = row_values[col].iloc[0]
@@ -157,16 +165,16 @@ def optimizer(
             
             else:
                 # get best scores of desired metric
-                best_scores = metrics.loc[metrics[col] == best_score]
+                best_scores = hyperparameter_table.loc[hyperparameter_table[col] == best_score]
 
                 # save best scores of desired metric to output
-                metrics = pd.concat([metrics, best_scores], ignore_index=True)
+                hyperparameter_table = pd.concat([hyperparameter_table, best_scores], ignore_index=True)
 
                 # return best model params, their scores, and the whole scores df
                 #return optimized_param, best_score, metrics
    
         else:
-            "score provided model"
+            "score the provided model"
             # Apply provided param to default params
             provided_model_params = model_options.get(model_type).get(model_name).get_params().copy()
             current_model_params = model.get_params().copy()
@@ -194,7 +202,7 @@ def optimizer(
             # log the results
             row_data = {
                 "Model Name": model_name,
-                "Threshold": threshold,
+                #"Threshold": threshold,  
                 "Accuracy": accuracy,
                 "Precision": precision,
                 "Recall": recall,
@@ -204,7 +212,7 @@ def optimizer(
             }
 
             row_values = pd.DataFrame([row_data])
-            metrics = pd.concat([metrics, row_values], ignore_index=True)
+            hyperparameter_table = pd.concat([hyperparameter_table, row_values], ignore_index=True)
             
             "Return Scores on provided parameters"
             if metric is None or len(metric) > 1:
@@ -217,7 +225,7 @@ def optimizer(
                 best_scores = metrics.loc[metrics[metric] == best_score]
 
                 # save best scores of desired metric to output
-                metrics = pd.concat([metrics, best_scores], ignore_index=True)
+                hyperparameter_table = pd.concat([hyperparameter_table, best_scores], ignore_index=True)
 
                 #return current_model_params, best_score, metrics
 
@@ -234,7 +242,7 @@ def optimizer(
         
         "if metric is not provided"
         if metric is None:
-            metric = metric_columns[2:]
+            metric = metrics
         elif not isinstance(metric, list):
             metric = [metric]
 
@@ -272,7 +280,7 @@ def optimizer(
                 }
 
                 row_values = pd.DataFrame([row_data])
-                metrics = pd.concat([metrics, row_values], ignore_index=True)
+                threshold_table = pd.concat([threshold_table, row_values], ignore_index=True)
 
             "Return optimized target threshold"
             if metric is None or len(metric) > 1:
@@ -282,16 +290,16 @@ def optimizer(
             
             else:
                 # get max metric Score
-                best_score = metrics[metric].max()
+                best_score = threshold_table[metric].max()
 
                 #get the index of the max score
-                max_score_idx = metrics[metric].idxmax()
+                max_score_idx = threshold_table[metric].idxmax()
 
                 # get the row scores for max metric score 
-                best_scores = metrics.loc[max_score_idx]
+                best_scores = threshold_table.loc[max_score_idx]
 
                 # get the target threshold for max metric score
-                best_target_threshold = metrics.loc[max_score_idx, 'Threshold']
+                best_target_threshold = threshold_table.loc[max_score_idx, 'Threshold']
                 
                 #return best_target_threshold, best_score, best_scores
 
@@ -301,6 +309,10 @@ def optimizer(
             # Predict Target
             y_pred = model.predict_proba(score_features)
             
+            roc_auc = roc_auc_score(score_target, y_pred[:, 1])  ###############
+            pr_auc = average_precision_score(score_target, y_pred[:, 1]) ###################
+
+
             # score prediction
             accuracy, precision, recall, f1 = categorical_scorer(
             target=score_target,
@@ -315,11 +327,13 @@ def optimizer(
                 "Accuracy": accuracy,
                 "Precision": precision,
                 "Recall": recall,
-                "F1": f1
+                "F1": f1,
+                "ROC AUC": roc_auc,
+                "PR AUC": pr_auc
             }
             
             row_values = pd.DataFrame([row_data])
-            metrics = pd.concat([metrics, row_values], ignore_index=True)
+            threshold_table = pd.concat([threshold_table, row_values], ignore_index=True)
         
             "Return target threshold scores"
             if metric is None or len(metric) > 1:
@@ -327,39 +341,39 @@ def optimizer(
                 #return target_threshold, None, metrics
             else:
                 # get max metric Score
-                best_score = metrics[metric].max()
+                best_score = threshold_table[metric].max()
 
                 #get the index of the max score
-                max_score_idx = metrics[metric].idxmax()
+                max_score_idx = threshold_table[metric].idxmax()
 
                 # get the row scores for max metric score 
-                all_target_threshold_scores = metrics.loc[max_score_idx]
+                all_target_threshold_scores = threshold_table.loc[max_score_idx]
                 
                 #return target_threshold, best_score, all_target_threshold_scores
             
     if model_type == 'Machine Learning':
         if param_to_optimize is not None:
             if metric is None or len(metric) > 1:
-                return optimized_param, current_model_params, metrics #(150) ✅
+                return optimized_param, current_model_params, hyperparameter_table #(150) ✅
             else:
-                return optimized_param, best_score, metrics #(160) ✅
+                return optimized_param, best_score, hyperparameter_table #(160) ✅
         else:
             if metric is None or len(metric) > 1:
                 # return multiple metrics 
-                return current_model_params, None, metrics #(207) ✅
+                return current_model_params, None, hyperparameter_table #(207) ✅
             else:
-                 return current_model_params, best_score, metrics #(216) ✅
+                 return current_model_params, best_score, hyperparameter_table #(216) ✅
     
     if target_type == 'classification':
         if target_threshold is None:
             if metric is None or len(metric) > 1:
                 # return multiple metrics 
-                return current_model_params, None, metrics #(269) ✅
+                return current_model_params, None, threshold_table #(269) ✅
             else:
                 return best_target_threshold, best_score, best_scores #(284) ✅
         else:
             if metric is None or len(metric) > 1:
-                return target_threshold, None, metrics #(313) ✅
+                return target_threshold, None, threshold_table #(313) ✅
             else:
                 return target_threshold, best_score, all_target_threshold_scores #(325) ✅
             

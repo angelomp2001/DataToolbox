@@ -275,21 +275,21 @@ def best_model_picker(
                 raise ValueError(f"Unknown model: {model_name}")
     
   
-    "Report findings"
+    "Report summary scores"
     if metric is None or len(metric) > 1:
         # Create a summary table by score
         best_model_scores = []
 
         "Summary by score"
-        for score_name in model_scores.columns[2:]:
-            numeric_score_series = pd.to_numeric(model_scores[score_name], errors='coerce') #added
+        for score_name in model_scores.columns[2:-2]:
+            numeric_score_series = pd.to_numeric(model_scores[score_name], errors='coerce') 
             best_score_index = numeric_score_series.idxmax()
             # best_score_index = model_scores[score_name].idxmax()
             best_score = model_scores.loc[best_score_index, score_name]
             model_name = model_scores.loc[best_score_index, 'Model Name']
             best_model_scores.append({
                 'Metric Name': score_name,
-                'Threshold': model_scores.loc[best_score_index, 'Threshold'],
+                #'Parameter': model_scores.loc[best_score_index, 'Parameter'],
                 'Best Score': best_score,
                 'Model Name': model_name
             })
@@ -302,19 +302,20 @@ def best_model_picker(
         best_scores_by_model = []
 
         for each_model in model_scores['Model Name'].unique():
-            for score_name in model_scores.columns[2:]:  # Assuming columns[2:] are metric columns
+            for score_name in model_scores.columns[2:-2]:  # Assuming columns[2:] are metric columns
                 # Get best score
                 best_score = model_scores[model_scores['Model Name'] == each_model][score_name].max()
 
                 # get best score corresponding threshold
-                best_threshold = model_scores.loc[model_scores[score_name] == best_score, 'Threshold'].iloc[0]
-                best_roc_auc = model_scores.loc[model_scores[score_name] == best_score, 'ROC AUC'].iloc[0]
-                best_pr_auc = model_scores.loc[model_scores[score_name] == best_score, 'PR AUC'].iloc[0]
+                best_score_index = model_scores[model_scores['Model Name'] == each_model][score_name].idxmax()
+                best_threshold = model_scores.loc[best_score_index, 'Threshold']
+                best_roc_auc = model_scores.loc[best_score_index, 'ROC AUC']
+                best_pr_auc = model_scores.loc[best_score_index, 'PR AUC']
                 
                 # Append to the results table
                 best_scores_by_model.append({
                     'Model Name': each_model,
-                    'Threshold': best_threshold,
+                    #'Parameter': best_threshold,
                     'Metric': score_name,
                     'Score': best_score,
                     'ROC AUC': best_roc_auc,
@@ -322,16 +323,16 @@ def best_model_picker(
                 })
 
         best_scores_by_model_df = pd.DataFrame(best_scores_by_model)
-        print(f'best_scores_by_model_df:\n{best_scores_by_model_df}')
-        pd.set_option('display.max_rows', None)        # Display all rows
-        pd.set_option('display.max_columns', None)     # Display all columns
-        pd.set_option('display.width', 1000)           # Make sure the console is wide enough to avoid wrapping
-        pd.set_option('display.colheader_justify', 'left') # Align column headers for better readability
-        print(f'model_scores:\n{model_scores}')
-        pd.reset_option('display.max_rows')
-        pd.reset_option('display.max_columns')
-        pd.reset_option('display.width')
-        pd.reset_option('display.colheader_justify')
+        # print(f'best_scores_by_model_df:\n{best_scores_by_model_df}')
+        # pd.set_option('display.max_rows', None)        # Display all rows
+        # pd.set_option('display.max_columns', None)     # Display all columns
+        # pd.set_option('display.width', 1000)           # Make sure the console is wide enough to avoid wrapping
+        # pd.set_option('display.colheader_justify', 'left') # Align column headers for better readability
+        #print(f'model_scores:\n{model_scores}')
+        # pd.reset_option('display.max_rows')
+        # pd.reset_option('display.max_columns')
+        # pd.reset_option('display.width')
+        # pd.reset_option('display.colheader_justify')
 
         
         print(f'optimized_hyperparameters: {optimized_hyperparameters}')
