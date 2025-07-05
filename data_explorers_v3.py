@@ -5,6 +5,9 @@
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from scipy.stats import norm
 
 def view(dfs, view=None):
     # Convert input to a dictionary of DataFrames if needed
@@ -33,6 +36,7 @@ def view(dfs, view=None):
             # col stats
             counts = df[col].value_counts()
             common_unique_values = counts.head(5).index.tolist() if not counts.empty else []
+            unique_values = counts.index.tolist() if not counts.empty else []
             rare_count = counts.tail(5).iloc[-1] if not counts.empty else np.nan
             rare_unique_values = counts.tail(5).index.tolist() if not counts.empty else []
             minority_ratio = rare_count / counts.sum() if counts.sum() > 0 else np.nan
@@ -52,6 +56,7 @@ def view(dfs, view=None):
                 'DataFrame': f'{df_name}',
                 'Column': col,
                 'Common Values': common_unique_values,
+                'Unique Values': unique_values
             })
 
             views["values"].append({
@@ -89,7 +94,7 @@ def view(dfs, view=None):
                 missing_cols.append(col)
 
     code = {
-        'headers': "Rename?\ndf.rename(columns={col: col.lower() for col in df.columns}, inplace=True)",
+        'headers': "Drop/rename?\ndf.rename(columns={col: col.lower() for col in df.columns}, inplace=True)",
         'values': "Manually fix missing? encode ordered/categorical?\n df['column_name'].replace(to_replace='old_value', value=None, inplace=True)\n# df['col_1'] = df['col_1'].fillna('Unknown', inplace=False)",
         'missing values': f"lots of missing?\n# Check for duplicates or summary statistics\nMissing Columns: {missing_cols}",
         'dtypes': "change dtype?\n# df['col'] = df['col'].astype(str) (Int64), (float64) \n# df['col'] = pd.to_datetime(df['col'], format='%Y-%m-%dT%H:%M:%SZ')",
@@ -107,12 +112,19 @@ def view(dfs, view=None):
 
 
 def see(
-        df: pd.DataFrame,
-        cols: list = None,
-        x: str = None,
-        case: str = None,
-        ):
-    
+    df: pd.DataFrame,
+    cols: list = None,
+    x: str = None,
+    case: str = None,
+    n: int = 10  # Number of top values to show for categorical/text data
+):
+    '''
+    Visualize a DataFrame:
+    - Categorical: Bar Chart of top n values
+    - Ordinal: Bar Chart of top n values
+    - Continuous: Histogram with theoretical normal distribution on second axis
+    - Text: Bar Chart of top n values
+    '''
     # Determine the x-axis label based on the provided argument or index name
     if x is None:
         try:
@@ -138,14 +150,49 @@ def see(
         # Loop through each column and create a separate plot
         for i, col in enumerate(cols):
             fig, ax = plt.subplots(figsize=(12, 6))
-            ax.plot(df.index, df[col], label=col, color=color_map(i))
-            ax.set_title(f'{col} by {x_label}')
-            ax.set_xlabel(x_label)
-            ax.set_ylabel(col, color=color_map(i))
+            dtype = df[col].dtype
+
+            if pd.api.types.is_numeric_dtype(dtype) and df[col].nunique() >= 10:
+                # Continuous data: Histogram with normal distribution
+                sns.histplot(df[col], bins=30, kde=False, color=color_map(i), ax=ax)
+                mu, std = norm.fit(df[col].dropna())
+                xmin, xmax = plt.xlim()
+                x = np.linspace(xmin, xmax, 100)
+                p = norm.pdf(x, mu, std)
+                ax2 = ax.twinx()
+                ax2.plot(x, p * (df[col].dropna().max() - df[col].dropna().min()), color=color_map(i+1))
+                ax2.set_ylabel(f'Normal dist fit: $\mu$={mu:.2f}, $\sigma$={std:.2f}', color=color_map(i+1))
+                ax.set_title(f'Histogram and Normal Distribution Fit of {col} by {x_label}')
+                ax.set_xlabel(x_label)
+                ax.set_ylabel(col, color=color_map(i))
+            elif pd.api.types.is_numeric_dtype(dtype):
+                # Continuous data but not enough unique values for normal distribution
+                sns.histplot(df[col], bins=30, kde=False, color=color_map(i), ax=ax)
+                ax.set_title(f'Histogram of {col} by {x_label}')
+                ax.set_xlabel(x_label)
+                ax.set_ylabel(col, color=color_map(i))
+            else:
+                # Categorical/Ordinal/Text data: Bar Chart of top n values
+                value_counts = df[col].value_counts().head(n)
+                value_counts.plot(kind='bar', color=color_map(i), ax=ax)
+                ax.set_title(f'Top {n} Values of {col} by {x_label}')
+                ax.set_xlabel(x_label)
+                ax.set_ylabel('Count', color=color_map(i))
+            
             ax.tick_params(axis='y', labelcolor=color_map(i))
             ax.grid(True)
             plt.legend(loc='best')
             plt.show()
+
+# Example usage
+# df = pd.DataFrame({
+#     'A': np.random.normal(0, 1, 100),
+#     'B': np.random.randint(0, 10, 100),
+#     'C': ['apple', 'banana', 'apple', 'cherry', 'banana'] * 20
+# })
+# see(df, cols=['A', 'B', 'C'], x='Index')
+
+
     # elif case == 'graph_scores':
         # model_name, accuracy, precision, recall, f1 = model_scores
         # plt.figure(figsize=(8, 6))
