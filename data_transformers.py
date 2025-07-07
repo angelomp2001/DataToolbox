@@ -9,6 +9,68 @@ from sklearn.preprocessing import OrdinalEncoder
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample, shuffle
 from typing import Optional
+import numpy as np
+
+
+def bootstrap(
+        data: pd.DataFrame,
+        n: int = 100,
+        rows: int = None,
+        frac: float = None,
+        replace: bool = True,
+        weights: Optional[np.ndarray] = None,
+        random_state: int = None,
+        axis: str = 'index'
+    ):
+    """
+    Create n bootstrap samples from the provided data, always resetting the index.
+    
+    Parameters:
+      data: DataFrame or Series.
+      n: Number of bootstrap samples.
+      rows: Number of rows (or elements) to sample per bootstrap sample.
+            If provided, 'frac' is ignored.
+      frac: Fraction of data to sample if rows is None.
+      replace: Sample with replacement if True.
+      weights: Weights for sampling; default None gives equal probability.
+      random_state: Seed for randomness; if provided, used to create a RandomState.
+      axis: Axis along which to sample. For a DataFrame with row sampling, use 'index' or 0.
+    
+    Returns:
+      A DataFrame where:
+        - If data is a Series: each column is a bootstrap sample.
+        - If data is a DataFrame: the output columns are a MultiIndex where the outer level
+          represents the bootstrap replicate (e.g., 'sample_1', 'sample_2', ...) and the inner
+          level contains the original DataFrame's columns.
+
+    For hypotheis testing:
+    series_sample_1 = result_df['sample_1']['A']
+    series_sample_2 = result_df['sample_2']['A']
+    """
+    rng = np.random.RandomState(random_state)
+    samples = []
+    
+    for i in range(n):
+        seed = rng.randint(0, 10**8)
+        sample = data.sample(n=rows, frac=frac, replace=replace, weights=weights,
+                             random_state=seed, axis=axis)
+        if axis in (0, 'index'):
+            # Always reset the index to ensure consistent concatenation.
+            sample = sample.reset_index(drop=True)
+        samples.append(sample)
+    
+    if isinstance(data, pd.DataFrame):
+        # Concatenate along columns, using keys to create a MultiIndex.
+        output = pd.concat(samples, axis=1, keys=[f'sample_{i+1}' for i in range(n)])
+    else:
+        # For Series, rename the columns to indicate the sample number.
+        output = pd.concat(samples, axis=1)
+        output.columns = [f'sample_{i+1}' for i in range(n)]
+    
+    return output
+
+
+
 
 
 def downsample(
