@@ -19,23 +19,16 @@ from H0_testing import split_test_plot
 import scipy.stats as st
 from statsmodels.stats.power import TTestIndPower
 
-
-
 # Extract and view
 df = pd.read_csv('ds-automations/data/sprint 8 churn.csv')
-# view(df)
-
-
-
-            
- 
+# view(df) 
 
 # Grab two random samples for testing
 s1 = df[df['Gender'] == 'Male']['CreditScore']
 s2 = df[df['Gender'] == 'Female']['CreditScore']
 
 # Run the plot test with bootstrap
-result = split_test_plot_test(s1, s2, bootstrap=True)
+result = split_test_plot(s1, s2, bootstrap=True)
 
 # Show output summary in console
 print(result)
@@ -43,7 +36,7 @@ print(result)
 
 samples = bootstrap(df['CreditScore'], n=2, rows=df.shape[0], random_state=123)
 
-split_test_plot_test(samples.loc[0], samples.loc[1])
+split_test_plot(samples.loc[0], samples.loc[1])
 
 
 
