@@ -115,7 +115,8 @@ def split_test_plot(
             s1 = sample.iloc[:len(series_1)]
             s2 = sample.iloc[len(series_1):]
             boot_diffs.append(np.mean(s2) - np.mean(s1))
-
+        
+        # Convert to numpy array for easier calculations
         boot_diffs = np.array(boot_diffs)
 
         ci_low = np.percentile(boot_diffs, 2.5)
