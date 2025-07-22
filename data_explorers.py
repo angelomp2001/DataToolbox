@@ -2,6 +2,7 @@
 # pd.set_option('display.max_columns', None)  # Show all columns
 # pd.set_option('display.width', 500)        # Increase horizontal width
 # pd.set_option('display.max_colwidth', None) # Show full content of each column
+# pd.set_option('display.max_rows', None)        # Show all rows
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -36,7 +37,7 @@ def view(dfs, view=None):
             # col stats
             counts = df[col].value_counts()
             common_unique_values = counts.head(5).index.tolist() if not counts.empty else []
-            unique_values = counts.index.tolist() if not counts.empty else []
+            n_unique_values = df[col].nunique() if not counts.empty else 0
             rare_count = counts.tail(5).iloc[-1] if not counts.empty else np.nan
             rare_unique_values = counts.tail(5).index.tolist() if not counts.empty else []
             minority_ratio = rare_count / counts.sum() if counts.sum() > 0 else np.nan
@@ -56,7 +57,7 @@ def view(dfs, view=None):
                 'DataFrame': f'{df_name}',
                 'Column': col,
                 'Common Values': common_unique_values,
-                'Unique Values': unique_values
+                'Unique Values': n_unique_values
             })
 
             views["values"].append({
