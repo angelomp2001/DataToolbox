@@ -69,10 +69,6 @@ def bootstrap(
     
     return output
 
-
-
-
-
 def downsample(
     df: pd.DataFrame,
     target: str = None,
@@ -246,7 +242,11 @@ def upsample(
         print(f'(no upsampling)')
     return df_upsampled
 
-def ordinal_encoder(df, ordinal_cols):
+def ordinal_encoder(
+        df: pd.DataFrame,
+        ordinal_cols: str = None,
+        auto_encode: bool = False,
+        ):
     if ordinal_cols is not None:
         encoded_values_dict = []
         for col in ordinal_cols:
@@ -264,7 +264,28 @@ def ordinal_encoder(df, ordinal_cols):
         print(f'ordinal_encoder() complete\n')
         return df, encoded_values_dict
     else:
-        return df, None
+        if auto_encode == False:
+            return df, None
+        else:
+            for col in ordinal_cols:
+                print(f'Encoding column: {col}')
+
+                if df[col].dtype == 'object':  # Check if the column is of string type
+                    # Create a mapping dictionary: each unique value to an integer based on its position
+                    unique_values = sorted(df[col].dropna().unique())
+                    mapping_dict = {val: idx for idx, val in enumerate(unique_values)}
+                    print(f'Mapping values {col}: {mapping_dict}')
+                    
+                    # Encode the column using the mapping dictionary
+                    df[col] = df[col].map(mapping_dict)
+                    
+                    # Store the mapping for potential later use
+                    encoded_values_dict.append(mapping_dict)
+            
+            print(f'ordinal_encoder() complete\n')
+            return df, encoded_values_dict
+
+
 
 def missing_values(
         df: pd.DataFrame,

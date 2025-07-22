@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 from H0_testing import split_test_plot
 import scipy.stats as st
 from statsmodels.stats.power import TTestIndPower
-from objective_functions import k_nearest, chat_k_nearest
+from objective_functions import k_nearest, k_nearest
 import tqdm
 
 # maximize terminal output display
@@ -30,32 +30,16 @@ pd.set_option('display.colheader_justify', 'left')
 
 # Extract and view
 df = pd.read_csv('data/sprint 8 churn.csv')
-# view(df)
+#view(df, 'headers')
 
 
-sub_df = df.loc[:4, ['CreditScore', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary', 'Exited']]
+sub_df = df.loc[:4, ['Geography', 'CreditScore', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary', 'Exited']]
 print(sub_df.head())
-# weights = None
-# D = sub_df.values
-# weights = weights.values if weights is not None else np.ones(len(D))
-# new_row = None
-
-
-# distances = np.zeros((len(D), len(D)))
-# print(D,'\n')
-# for m in range(len(D)):
-#     for n in range(len(D)):
-#         print(f"Comparing row {m} and row {n}:")
-#         print("Row m:", D[m])
-#         print("Row n:", D[n])
-#         difference = D[m] - D[n]
-#         print("Difference:", difference)
-#         distances[m, n] = np.dot(difference, difference)
 
 #     print(distances)
 weights = {
-    'CreditScore': 0,
-    'Age': 99999,
+    'CreditScore': 1,
+    'Age': 1,
     'Tenure': .0,
     'Balance': .0,
     'NumOfProducts': .0,
@@ -66,17 +50,16 @@ weights = {
 }
 
 new_row = {
-    'CreditScore': 619,
-    'Age': 42,
+    'CreditScore': 850,
+    'Age': 43,
     'Tenure': 2,
     'Balance': 0,
     'NumOfProducts': 1,
     'HasCrCard': 1,
     'IsActiveMember': 1,
-    'EstimatedSalary': 101348.88,
-    'Exited': 0,
+    'EstimatedSalary': 79084.10
 }
-output = chat_k_nearest(dataframe_or_features=sub_df, weights=weights, new_row=None, k_nearest=1)
+output = k_nearest(dataframe_or_features=sub_df, weights_dict=None, new_row_dict=new_row, k_nearest=1)
 print(output)
 # # Grab two random samples for testing
 # s1 = df[df['Gender'] == 'Male']['CreditScore']
