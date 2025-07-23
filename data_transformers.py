@@ -285,8 +285,6 @@ def ordinal_encoder(
             print(f'ordinal_encoder() complete\n')
             return df, encoded_values_dict
 
-
-
 def missing_values(
         df: pd.DataFrame,
         missing_values_method: str,

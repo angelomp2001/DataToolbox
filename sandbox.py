@@ -27,11 +27,16 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.width', 1000)
 pd.set_option('display.colheader_justify', 'left')
 
-
 # Extract and view
 df = pd.read_csv('data/sprint 8 churn.csv')
 #view(df, 'headers')
 
+df = (
+    df
+    .pipe(
+
+    )
+)
 
 sub_df = df.loc[:4, ['Geography', 'CreditScore', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary', 'Exited']]
 print(sub_df.head())
