@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from scipy.stats import norm
+import seaborn as sns
+
 
 def view(dfs, view=None):
     # Convert input to a dictionary of DataFrames if needed
@@ -185,28 +187,11 @@ def see(
             plt.legend(loc='best')
             plt.show()
 
-# Example usage
-# df = pd.DataFrame({
-#     'A': np.random.normal(0, 1, 100),
-#     'B': np.random.randint(0, 10, 100),
-#     'C': ['apple', 'banana', 'apple', 'cherry', 'banana'] * 20
-# })
-# see(df, cols=['A', 'B', 'C'], x='Index')
-
-
-    # elif case == 'graph_scores':
-        # model_name, accuracy, precision, recall, f1 = model_scores
-        # plt.figure(figsize=(8, 6))
-        # plt.plot(model_scores['Recall'], model_scores['Precision'], label="Precision-Recall Curve")
-        # plt.scatter(best_recall, best_precision,
-        #             color='red',
-        #             label=f'Max F1 = {max_f1:.2f}\nThreshold = {best_threshold:.2f}',
-        #             zorder=5)
-        # plt.xlabel("Recall")
-        # plt.ylabel("Precision")
-        # plt.title("Precision-Recall Curve with Max F1 Indication")
-        # plt.legend()
-        # plt.grid(True)
-        # plt.show()
     else:
         pass
+
+def view_matrix(
+        df: pd.DataFrame,
+):
+    g = sns.pairplot(df, kind='hist')
+    g.figure.set_size_inches(12, 12)

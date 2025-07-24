@@ -12,6 +12,8 @@ from typing import Optional
 import numpy as np
 
 
+
+
 def bootstrap(
         data: pd.DataFrame,
         n: int = 100,
@@ -68,10 +70,6 @@ def bootstrap(
         output.columns = [f'sample_{i+1}' for i in range(n)]
     
     return output
-
-
-
-
 
 def downsample(
     df: pd.DataFrame,
