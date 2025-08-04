@@ -321,15 +321,28 @@ def missing_values(
     print(f'--- missing_values() complete\n')
     return df
 
-def feature_scaler(df):
-    # feature scaling
-    for col in df.columns:
-        if df[col].dtype in ['int64', 'float64']:
-            scaler = StandardScaler()
-            df[col] = scaler.fit_transform(df[col])
+def feature_scaler(self) -> pd.DataFrame:
+    '''
+    Scales all numeric features in self.df using StandardScaler.
+    Works with both pandas DataFrames and numpy arrays/matrices.
+    Returns a scaled DataFrame (or ndarray if input was ndarray).
+    '''
+    if isinstance(self.df, (np.ndarray, np.matrix)):
+        scaler = StandardScaler()
+        scaled = scaler.fit_transform(self.df)
+        print(f'--- feature_scaler() complete (array input)\n')
+        return scaled
 
-    print(f'--- feature_scaler() complete\n')
-    return df
+    # If self.df is a DataFrame
+    scaled_data = self.df.copy()
+    for col in scaled_data.select_dtypes(include=[np.number]).columns:
+        scaler = StandardScaler()
+        scaled_data[col] = scaler.fit_transform(
+            scaled_data[[col]]  # safer than reshape; keeps it as 2D DataFrame
+        ).flatten()
+
+    print(f'--- feature_scaler() complete (DataFrame input)\n')
+    return scaled_data
 
 def categorical_encoder(df, model_type):
     if model_type == 'Regressions':
@@ -553,3 +566,4 @@ def data_transformer(
         
     except Exception as e:
         print(f"(no splitting): {e}\n")
+
