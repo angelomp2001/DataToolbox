@@ -333,48 +333,73 @@ class DataProcessor:
     self,
     model_type: str,
     ordinal_cols: list = None,
+    categorical_cols: list = None,
     auto_encode: bool = False
     ) -> pd.DataFrame:
         """
-        Encodes features based on model type:
-        - For 'Regressions': One-hot encodes categorical variables.
-        - For 'Machine Learning': Label encodes (ordinal) categorical variables.
+        Encodes features for modeling:
+        - For 'Regressions': One-hot encodes categorical_cols.
+        - For 'Machine Learning': Ordinal encodes ordinal_cols.
+        Ensures no column remains with dtype 'object' or 'string'.
+        
+        Parameters:
+            model_type (str): 'Regressions' or 'Machine Learning'
+            ordinal_cols (list): columns to be ordinal encoded
+            categorical_cols (list): columns to be one-hot encoded
+            auto_encode (bool): infer object columns if no lists are provided
+
         Returns:
-            self.df (DataFrame): The encoded DataFrame
+            self.df (pd.DataFrame): the fully encoded DataFrame
+            encoded_values_dict (list): mappings used for ordinal encoding
         """
-        # Identify object (categorical) columns
-        cat_cols = self.df.select_dtypes(include=['object', 'category']).columns.tolist()
-
-        # Handle ordinal columns separately if specified
-        if ordinal_cols is not None:
-            if not isinstance(ordinal_cols, list):
-                ordinal_cols = [ordinal_cols]
-
+        # Initialize
         encoded_values_dict = []
 
-        if model_type == 'Regressions':
-            # One-hot encode all categorical variables
-            self.df = pd.get_dummies(self.df, drop_first=True)
-            print(f'-- One-hot encoding complete for Regressions\n')
+        # Auto-detect object columns if needed
+        object_cols = self.df.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
 
-        elif model_type == 'Machine Learning':
-            # Label encode (ordinal encode) categorical variables
-            columns_to_encode = ordinal_cols if ordinal_cols else cat_cols if auto_encode else []
+        if auto_encode:
+            if ordinal_cols is None:
+                ordinal_cols = []
+            if categorical_cols is None:
+                categorical_cols = object_cols
+            # Remove any overlap
+            ordinal_cols = list(set(ordinal_cols))
+            categorical_cols = list(set(categorical_cols) - set(ordinal_cols))
 
-            for col in columns_to_encode:
-                print(f'Encoding column: {col}')
-                unique_values = sorted(self.df[col].dropna().unique())
-                mapping_dict = {val: idx for idx, val in enumerate(unique_values)}
-                print(f'Mapping values {col}: {mapping_dict}')
-                self.df[col] = self.df[col].map(mapping_dict)
-                encoded_values_dict.append({col: mapping_dict})
+        # Handle ordinal encoding
+        if ordinal_cols:
+            for col in ordinal_cols:
+                if self.df[col].dtype in ['object', 'string', 'category']:
+                    print(f'Ordinal encoding column: {col}')
+                    unique_values = sorted(self.df[col].dropna().unique())
+                    mapping_dict = {val: idx for idx, val in enumerate(unique_values)}
+                    self.df[col] = self.df[col].map(mapping_dict)
+                    encoded_values_dict.append({col: mapping_dict})
 
-            print(f'-- Ordinal encoding complete for Machine Learning\n')
+        # Handle categorical (one-hot) encoding
+        if model_type == 'Regressions' and categorical_cols:
+            print(f'One-hot encoding columns: {categorical_cols}')
+            self.df = pd.get_dummies(self.df, columns=categorical_cols, drop_first=True)
 
-        else:
-            print(f'(No encoding applied — unrecognized model_type: {model_type})')
+        elif model_type == 'Machine Learning' and categorical_cols:
+            # For ML models, you could ordinal encode these too (optional)
+            for col in categorical_cols:
+                if self.df[col].dtype in ['object', 'string', 'category']:
+                    print(f'Encoding column: {col}')
+                    unique_values = sorted(self.df[col].dropna().unique())
+                    mapping_dict = {val: idx for idx, val in enumerate(unique_values)}
+                    self.df[col] = self.df[col].map(mapping_dict)
+                    encoded_values_dict.append({col: mapping_dict})
 
+        # Final check: ensure no object columns remain
+        str_cols_remaining = self.df.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
+        if str_cols_remaining:
+            raise ValueError(f"The following columns still have object dtype: {str_cols_remaining}")
+
+        print(f'-- Encoding complete. No string columns remain.\n')
         return self.df, encoded_values_dict if encoded_values_dict else None
+
 
     def split(
     self,
@@ -462,15 +487,34 @@ class DataProcessor:
         else:
             raise ValueError("split_ratio must be a tuple with 3 or fewer elements.")
 
+    def vectorize(
+            self,
+        ) -> pd.DataFrame:
+        '''
+        Vectorizes df
+        '''
+        self.df = self.df.to_numpy()
+        return self.df
 
-# df = pd.DataFrame({
-#     'name': ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
-#     'age': [25, 30, 35, 40, 45],
-#     'salary': [50000, 60000, 75000, 80000, 90000],
-#     'department': ['HR', 'IT', 'Sales', 'Marketing', 'Finance']
-# })
-# data = DataProcessor(df)
 
-# output = data.split(split_ratio=(.5,.5), target='salary')
-# print(output)
+
+
+
+df = pd.DataFrame({
+    'name': ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
+    'age': [25, 30, 35, 40, 45],
+    'salary': [50000, 60000, 75000, 80000, 90000],
+    'department': ['HR', 'IT', 'Sales', 'Marketing', 'Finance']
+})
+data = DataProcessor(df)
+
+data.encode_features(
+    model_type='Machine Learning',
+    categorical_cols=['department'],
+    ordinal_cols=['name']
+    )
+print(data.df)
+data.vectorize()
+output = data.df
+print(output)
 
