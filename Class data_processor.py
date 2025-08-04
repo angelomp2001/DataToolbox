@@ -339,21 +339,21 @@ class DataProcessor:
         """
         Encodes features for modeling:
         - For 'Regressions': One-hot encodes categorical_cols.
-        - For 'Machine Learning': Ordinal encodes ordinal_cols.
+        - For 'Machine Learning': Ordinal encodes ordinal_cols and categorical_cols.
         Ensures no column remains with dtype 'object' or 'string'.
         
         Parameters:
             model_type (str): 'Regressions' or 'Machine Learning'
             ordinal_cols (list): columns to be ordinal encoded
-            categorical_cols (list): columns to be one-hot encoded
+            categorical_cols (list): columns to be one-hot (Regressions) or ordinal encoded (ML)
             auto_encode (bool): infer object columns if no lists are provided
 
         Returns:
             self.df (pd.DataFrame): the fully encoded DataFrame
-            encoded_values_dict (list): mappings used for ordinal encoding
+            encoded_values_dict (dict): mappings used for ordinal and categorical encoding
         """
         # Initialize
-        encoded_values_dict = []
+        encoded_values_dict = {'ordinal': {}, 'categorical': {}}
 
         # Auto-detect object columns if needed
         object_cols = self.df.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
@@ -363,7 +363,6 @@ class DataProcessor:
                 ordinal_cols = []
             if categorical_cols is None:
                 categorical_cols = object_cols
-            # Remove any overlap
             ordinal_cols = list(set(ordinal_cols))
             categorical_cols = list(set(categorical_cols) - set(ordinal_cols))
 
@@ -375,22 +374,21 @@ class DataProcessor:
                     unique_values = sorted(self.df[col].dropna().unique())
                     mapping_dict = {val: idx for idx, val in enumerate(unique_values)}
                     self.df[col] = self.df[col].map(mapping_dict)
-                    encoded_values_dict.append({col: mapping_dict})
+                    encoded_values_dict['ordinal'][col] = mapping_dict
 
-        # Handle categorical (one-hot) encoding
+        # Handle categorical (either one-hot or ordinal)
         if model_type == 'Regressions' and categorical_cols:
             print(f'One-hot encoding columns: {categorical_cols}')
             self.df = pd.get_dummies(self.df, columns=categorical_cols, drop_first=True)
 
         elif model_type == 'Machine Learning' and categorical_cols:
-            # For ML models, you could ordinal encode these too (optional)
             for col in categorical_cols:
                 if self.df[col].dtype in ['object', 'string', 'category']:
-                    print(f'Encoding column: {col}')
+                    print(f'Ordinal encoding column (categorical): {col}')
                     unique_values = sorted(self.df[col].dropna().unique())
                     mapping_dict = {val: idx for idx, val in enumerate(unique_values)}
                     self.df[col] = self.df[col].map(mapping_dict)
-                    encoded_values_dict.append({col: mapping_dict})
+                    encoded_values_dict['categorical'][col] = mapping_dict
 
         # Final check: ensure no object columns remain
         str_cols_remaining = self.df.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
@@ -398,7 +396,8 @@ class DataProcessor:
             raise ValueError(f"The following columns still have object dtype: {str_cols_remaining}")
 
         print(f'-- Encoding complete. No string columns remain.\n')
-        return self.df, encoded_values_dict if encoded_values_dict else None
+        return self.df, encoded_values_dict if encoded_values_dict['ordinal'] or encoded_values_dict['categorical'] else None
+
 
 
     def split(
@@ -508,13 +507,11 @@ df = pd.DataFrame({
 })
 data = DataProcessor(df)
 
-data.encode_features(
+data.df, encoded_values_dict = data.encode_features(
     model_type='Machine Learning',
     categorical_cols=['department'],
     ordinal_cols=['name']
-    )
-print(data.df)
-data.vectorize()
+)
 output = data.df
-print(output)
+print(encoded_values_dict)
 
