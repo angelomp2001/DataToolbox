@@ -394,13 +394,13 @@ def data_splitter(
     
     elif len(split_ratio) == 1:
         if split_ratio <= 1:
-            df = downsample(df)
+            df = downsample(df, n_rows=split_ratio*len(df))
 
             print(f'--- data_splitter() complete\n')
             return df
         
         elif split_ratio > 1:
-            df = upsample(df)
+            df = upsample(df, n_rows=split_ratio*len(df))
 
             print(f'--- data_splitter() complete\n')
             return df

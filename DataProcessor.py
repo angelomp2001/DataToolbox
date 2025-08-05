@@ -9,7 +9,7 @@
 # - add self to function
 # - remove default value from self parameters
 # - update function parameters that are now instance variables with self.parameter_name
-# test class
+# test method
 
 from sklearn.model_selection import train_test_split
 import pandas as pd
@@ -18,6 +18,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils import resample, shuffle
 from typing import Optional
 import numpy as np
+from typing import Union
 
 
 
@@ -26,9 +27,23 @@ class DataProcessor:
         self,
         df: pd.DataFrame,
         random_state: int = 12345,
+        target: str = None,
     ):
         self.df = df
         self.random_state = random_state
+        self.target = target
+        self.features = self.df.drop(columns=[target], axis=1) if target else None
+        self.train_features = None
+        self.train_target = None
+        self.valid_features = None
+        self.valid_target = None
+        self.test_features = None
+        self.test_target = None
+        self.w = None
+        self.w0 = None
+
+
+
 
     def bootstrap(self,
         n: int = 100,
@@ -322,8 +337,10 @@ class DataProcessor:
         scaled_data = self.df.copy()
         for col in scaled_data.select_dtypes(include=[np.number]).columns:
             scaler = StandardScaler()
+
+            # keeps it as 2D DataFrame
             scaled_data[col] = scaler.fit_transform(
-                scaled_data[[col]]  # safer than reshape; keeps it as 2D DataFrame
+                scaled_data[[col]]  
             ).flatten()
 
         print(f'--- feature_scaler() complete (DataFrame input)\n')
@@ -332,7 +349,7 @@ class DataProcessor:
     def encode_features(
     self,
     model_type: str,
-    ordinal_cols: list = None,
+    ordinal_cols: Union[list, dict] = None,
     categorical_cols: list = None,
     auto_encode: bool = False
     ) -> pd.DataFrame:
@@ -341,42 +358,60 @@ class DataProcessor:
         - For 'Regressions': One-hot encodes categorical_cols.
         - For 'Machine Learning': Ordinal encodes ordinal_cols and categorical_cols.
         Ensures no column remains with dtype 'object' or 'string'.
-        
+
         Parameters:
             model_type (str): 'Regressions' or 'Machine Learning'
-            ordinal_cols (list): columns to be ordinal encoded
-            categorical_cols (list): columns to be one-hot (Regressions) or ordinal encoded (ML)
+            ordinal_cols (list or dict): columns to be ordinal encoded.
+                                        If dict, values must be ordered list (low → high)
+            categorical_cols (list): columns to be one-hot or ordinal encoded
             auto_encode (bool): infer object columns if no lists are provided
 
         Returns:
             self.df (pd.DataFrame): the fully encoded DataFrame
             encoded_values_dict (dict): mappings used for ordinal and categorical encoding
         """
-        # Initialize
-        encoded_values_dict = {'ordinal': {}, 'categorical': {}}
 
-        # Auto-detect object columns if needed
+
+        encoded_values_dict = {'ordinal': {}, 'categorical': {}}
         object_cols = self.df.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
 
+        # Prepare encoding targets
         if auto_encode:
             if ordinal_cols is None:
                 ordinal_cols = []
             if categorical_cols is None:
                 categorical_cols = object_cols
-            ordinal_cols = list(set(ordinal_cols))
-            categorical_cols = list(set(categorical_cols) - set(ordinal_cols))
+            ordinal_cols = list(set(ordinal_cols)) if isinstance(ordinal_cols, list) else ordinal_cols
+            categorical_cols = list(set(categorical_cols) - set(ordinal_cols if isinstance(ordinal_cols, list) else ordinal_cols.keys()))
 
         # Handle ordinal encoding
         if ordinal_cols:
-            for col in ordinal_cols:
-                if self.df[col].dtype in ['object', 'string', 'category']:
-                    print(f'Ordinal encoding column: {col}')
-                    unique_values = sorted(self.df[col].dropna().unique())
+            if isinstance(ordinal_cols, dict):
+                for col, order in ordinal_cols.items():
+                    print(f"Ordinal encoding column (custom order): {col}")
+                    mapping_dict = {val: idx for idx, val in enumerate(order)}
+                    self.df[col] = self.df[col].map(mapping_dict)
+                    encoded_values_dict['ordinal'][col] = mapping_dict
+
+            elif isinstance(ordinal_cols, list):
+                for col in ordinal_cols:
+                    print(f"Ordinal encoding column (auto): {col}")
+                    col_data = self.df[col]
+
+                    # Try datetime conversion if dtype is object/string
+                    if col_data.dtype in ['object', 'string']:
+                        try:
+                            col_data = pd.to_datetime(col_data)
+                            self.df[col] = col_data  # Update with datetime if successful
+                        except Exception:
+                            pass
+
+                    unique_values = sorted(col_data.dropna().unique())
                     mapping_dict = {val: idx for idx, val in enumerate(unique_values)}
                     self.df[col] = self.df[col].map(mapping_dict)
                     encoded_values_dict['ordinal'][col] = mapping_dict
 
-        # Handle categorical (either one-hot or ordinal)
+        # Handle categorical encoding
         if model_type == 'Regressions' and categorical_cols:
             print(f'One-hot encoding columns: {categorical_cols}')
             self.df = pd.get_dummies(self.df, columns=categorical_cols, drop_first=True)
@@ -384,7 +419,7 @@ class DataProcessor:
         elif model_type == 'Machine Learning' and categorical_cols:
             for col in categorical_cols:
                 if self.df[col].dtype in ['object', 'string', 'category']:
-                    print(f'Ordinal encoding column (categorical): {col}')
+                    print(f"Ordinal encoding column (categorical): {col}")
                     unique_values = sorted(self.df[col].dropna().unique())
                     mapping_dict = {val: idx for idx, val in enumerate(unique_values)}
                     self.df[col] = self.df[col].map(mapping_dict)
@@ -395,10 +430,8 @@ class DataProcessor:
         if str_cols_remaining:
             raise ValueError(f"The following columns still have object dtype: {str_cols_remaining}")
 
-        print(f'-- Encoding complete. No string columns remain.\n')
+        print('-- Encoding complete. No string columns remain.\n')
         return self.df, encoded_values_dict if encoded_values_dict['ordinal'] or encoded_values_dict['categorical'] else None
-
-
 
     def split(
     self,
@@ -420,6 +453,13 @@ class DataProcessor:
                 - For two ratios: (train_features, train_target, valid_features, valid_target)
                 - For three ratios: (train_features, train_target, valid_features, valid_target, test_features, test_target)
         """
+        # save relevant new inputs to self. 
+        # string
+        self.target = target
+
+        # df
+        self.features = self.df.drop(self.target, axis=1)
+
         if random_state is None:
             random_state = self.random_state
         else:
@@ -433,13 +473,13 @@ class DataProcessor:
         
         elif len(split_ratio) == 1:
             if split_ratio <= 1:
-                self.df = self.downsample(self.df)
+                self.df = self.downsample(self.df, n_rows=split_ratio*len(self.df))
 
                 print(f'--- data_splitter() complete\n')
                 return self.df
             
             elif split_ratio > 1:
-                self.df = self.upsample(self.df)
+                self.df = self.upsample(self.df, n_rows=split_ratio*len(self.df))
 
                 print(f'--- data_splitter() complete\n')
                 return self.df
@@ -452,54 +492,76 @@ class DataProcessor:
 
             print(f"Shapes:\ndf_train: {df_train.shape}\ndf_valid: {df_valid.shape}")
 
-            train_features = df_train.drop(target, axis=1)
-            train_target = df_train[target]
-            valid_features = df_valid.drop(target, axis=1)
-            valid_target = df_valid[target]
+            self.train_features = df_train.drop(self.target, axis=1)
+            self.train_target = df_train[self.target]
+            self.valid_features = df_valid.drop(self.target, axis=1)
+            self.valid_target = df_valid[self.target]
 
             print(f'--- data_splitter() complete\n')
-            return train_features, train_target, valid_features, valid_target
+            return self.train_features, self.train_target, self.valid_features, self.valid_target
 
         elif len(split_ratio) == 3:
             train_ratio, val_ratio, test_ratio = split_ratio
 
             # First split: separate out the test set.
-            df_temp, df_test = train_test_split(self.df, test_size=test_ratio, random_state=random_state)
+            df_temp, self.df_test = train_test_split(self.df, test_size=test_ratio, random_state=random_state)
 
             # Recalculate validation ratio relative to the remaining data (df_temp).
             new_val_ratio = val_ratio / (1 - test_ratio)
 
-            df_train, df_valid = train_test_split(df_temp, test_size=new_val_ratio, random_state=random_state)
+            self.df_train, self.df_valid = train_test_split(df_temp, test_size=new_val_ratio, random_state=random_state)
 
-            print(f"new data shapes:\ndf_train: {df_train.shape}\ndf_valid: {df_valid.shape}\ndf_test: {df_test.shape}")
+            print(f"new data shapes:\ndf_train: {self.df_train.shape}\ndf_valid: {self.df_valid.shape}\ndf_test: {self.df_test.shape}")
 
-            train_features = df_train.drop(target, axis=1)
-            train_target = df_train[target]
-            valid_features = df_valid.drop(target, axis=1)
-            valid_target = df_valid[target]
-            test_features = df_test.drop(target, axis=1)
-            test_target = df_test[target]
+            self.train_features = self.df_train.drop(self.target, axis=1)
+            self.train_target = self.df_train[self.target]
+            self.valid_features = self.df_valid.drop(self.target, axis=1)
+            self.valid_target = self.df_valid[self.target]
+            self.test_features = self.df_test.drop(self.target, axis=1)
+            self.test_target = self.df_test[self.target]
 
             print(f'--- data_splitter() complete\n')
-            return train_features, train_target, valid_features, valid_target, test_features, test_target
+            return self.train_features, self.train_target, self.valid_features, self.valid_target, self.test_features, self.test_target
 
         else:
             raise ValueError("split_ratio must be a tuple with 3 or fewer elements.")
 
     def vectorize(
             self,
+            df: pd.DataFrame = None,
+            features: pd.DataFrame or pd.Series= None,
+            target: str = None,
         ) -> pd.DataFrame:
         '''
         Vectorizes df
         '''
-        self.df = self.df.to_numpy()
-        return self.df
+        # vectorize:
+        if df is not None:
+            self.df = df
+            return self.df
+        if features is not None and target is not None:
+            self.features = features
+            self.target = target
+            return self.features, self.target
+        if df is None and features is None and target is None:
+            self.train_features = self.train_features.to_numpy() if self.train_features is not None else None
+            self.train_target = self.train_target.to_numpy() if self.train_target is not None else None
+            self.valid_features = self.valid_features.to_numpy() if self.valid_features is not None else None
+            self.valid_target = self.valid_target.to_numpy() if self.valid_target is not None else None
+            self.test_features = self.test_features.to_numpy() if self.test_features is not None else None
+            self.test_target = self.test_target.to_numpy() if self.test_target is not None else None
+            self.features = self.features.to_numpy() if self.features is not None else None
+            self.target = self.target.to_numpy() if self.target is not None else None
+            self.df = np.concatenate((self.features, self.target.reshape(-1, 1)), axis=1) if self.features is not None and self.target is not None else None   
+            return self.train_features, self.train_target, self.valid_features, self.valid_target, self.test_features, self.test_target, self.features, self.target, self.df
+
 
 
 
 
 
 df = pd.DataFrame({
+    'date': ['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04', '2023-01-05'],
     'name': ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
     'age': [25, 30, 35, 40, 45],
     'salary': [50000, 60000, 75000, 80000, 90000],
@@ -509,8 +571,8 @@ data = DataProcessor(df)
 
 data.df, encoded_values_dict = data.encode_features(
     model_type='Machine Learning',
-    categorical_cols=['department'],
-    ordinal_cols=['name']
+    categorical_cols=['department', 'name'],
+    ordinal_cols=['date']
 )
 output = data.df
 print(encoded_values_dict)
