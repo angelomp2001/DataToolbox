@@ -19,9 +19,9 @@ from sklearn.model_selection import train_test_split
 class DataModeler:
     def __init__(
         self,
-        models: dict,
-        features: np.ndarray,
-        target: np.ndarray,
+        models: dict = None,
+        features: np.ndarray = None,
+        target: np.ndarray = None,
         random_state: int = 12345,
         step_size: float = 0.01,
         epochs: int = 100,
@@ -42,33 +42,63 @@ class DataModeler:
         self.test_target = test_target
         self.w = None
         self.w0 = None
-
+        self.train_features = None
+        self.train_target = None
+        self.valid_features = None
+        self.valid_target = None
+        self.test_features = None
+        self.test_target = None
 
 
     def fit(
             self,
             features: np.ndarray,
             target: np.ndarray,
-            
+            random_state: int = 12345,
         ):
         '''
-        Defines X and Y
+        Fits model weights using batch gradient descent for linear/logistic regression using generalized linear model (GLM).
         '''
+        verbose = True
+        #initialize parameters
         self.features = features
         self.target = target
+        if random_state is not None:
+            self.random_state = random_state
 
-        # shuffle rows
-
-        # switch to matrix notation
-        # add constant
-        X = np.concatenate(
-            (np.ones((self.features.shape[0], 1)), self.features), axis=1
-        )
+        X = self.features
         y = self.target
-        w = np.zeros(X.shape[1])
 
-        # solve for w by iterating over the df repeatedly
+        # define link function (links x to y) 'logit' for binary, 'identity' for continuous. 
+        n_unique = np.unique(y).size
+        if n_unique == 2:
+            # 
+            link = 'logit'
+        else:
+            link = 'identity'    
+
+        ## solve for w by iterating over the df repeatedly
+        # initialize losses in loss function
+        losses = []    
+
+        # random state seed 
+        np.random.seed(self.random_state)
+
         for _ in range(self.epochs):
+            # shuffle rows for each epoch
+            idx = np.random.permutation(len(target))
+            X_shuffled = X[idx]
+            y_shuffled = y[idx]
+
+            # add constant column (intercept) after shuffling
+            X_shuffled_with_const = np.concatenate(
+                (np.ones((X_shuffled.shape[0], 1)), X_shuffled), axis=1
+            )
+            
+            # initialize w if first epoch (shape depends on feature count after adding const)
+            if _ == 0:
+                w = np.zeros(X_shuffled_with_const.shape[1], dtype=np.float64) 
+            
             # stochastic: divide rows by batch size to get the number of batches
             batches_count = X.shape[0] // self.batch_size
 
@@ -81,29 +111,65 @@ class DataModeler:
                 end = (i + 1) * self.batch_size
                 
                 # corresponding batch rows:
-                X_batch = X[begin:end, :]
-                y_batch = y[begin:end]
+                X_batch = X_shuffled_with_const[begin:end, :]
+                y_batch = y_shuffled[begin:end]
 
-                # gradient
-                gradient = (
-                    2 * X_batch.T.dot(X_batch.dot(w) - y_batch)
-                    / X_batch.shape[0]
-                )
+                # Calculate linear predictor (XW)
+                mu = np.dot(X_batch, w)
 
-                # regularization to keep w values low and avoid overfitting
-                reg = 2 * w.copy()
+                # select appropriate link function
+                if link == 'logit':
+                    # mean: g^{-1}(XW) = sigmoid(z)
+                    pred = 1 / (1 + np.exp(-mu))
+
+                    # variance: g'^{-1}(XW) = d(sigmoid)/dz = sigmoid(z)*(1 - sigmoid(z))
+                    V = np.maximum(pred * (1 - pred), 1e-8)
+                else:
+                    # mean: g^{-1}(XW) = z Normal (identity) link function (already calculated as z)
+                    pred = mu
+
+                    # variance: g'^{-1}(XW) = 1
+                    # V = np.ones_like(pred)
+                    
+                # error term: μ - y
+                error = pred - y_batch
+
+                # Calculate and log loss function: L(W)
+                if link == 'logit':
+                    # To avoid log(0), add a small number (epsilon)
+                    eps = 1e-8
+
+                    # L(W) = y*log(μ) + (1-y)*(log(1-μ))
+                    loss = -np.mean(y_batch * np.log(pred + eps) + (1 - y_batch) * np.log(1 - pred + eps))
+                else:
+                    # L(W) = e⊤e
+                    loss = np.mean(error ** 2) 
+                losses.append(loss)
                 
-                # regularization is not applied to the constant
+                # print loss
+                if verbose and _ % 10 == 0:
+                    print(f"Epoch {_}: Loss = {loss:.4f}")
+
+
+                # ∇_W L(W) = -2X⊤V(y - μ), V = diag[g'^{-1}(XW)], -2 is absorbed in learning rate
+                if link == 'logit':
+                    # logistic regression: uses variance
+                    gradient = np.dot(X_batch.T, error * V) / (X_batch.shape[0] + 1e-8)
+                else:
+                    # linear regression: variance is 1, so V is removed
+                    gradient = np.dot(X_batch.T, error) / (X_batch.shape[0] + 1e-8)
+                gradient = np.clip(gradient, -1e5, 1e5)
+
+                # regularization to keep w values low and avoid overfitting (not applied to the constant)
+                reg = 2 * w.copy() # remove the 2?
                 reg[0] = 0
+            
+                # update w estimate: W_t = W_{t-1} - 2η X⊤V(y - μ), 2 is absorbed by learning rate
+                w -= self.step_size * (gradient + self.reg_weight * reg)
 
-                # updated gradient, accounting for regularization
-                gradient += self.reg_weight * reg
-                
-                # update w estimate
-                w -= self.step_size * gradient
-
-        self.w = w[1:]
-        self.w0 = w[0]
+        self.w = np.copy(w[1:])
+        self.w0 = float(w[0])
+        self.link = link
 
     def predict(self, test_features):
         return test_features.dot(self.w) + self.w0

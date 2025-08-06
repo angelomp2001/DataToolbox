@@ -45,6 +45,7 @@ class DataProcessor:
 
 
 
+
     def bootstrap(self,
         n: int = 100,
         n_rows: int = None,
@@ -540,9 +541,10 @@ class DataProcessor:
             self.df = df
             return self.df
         if features is not None and target is not None:
-            self.features = features
-            self.target = target
+            self.features = features.to_numpy() if isinstance(features, pd.DataFrame) else features
+            self.target = target.to_numpy() if isinstance(target, (pd.Series, pd.DataFrame)) else target
             return self.features, self.target
+
         if df is None and features is None and target is None:
             self.train_features = self.train_features.to_numpy() if self.train_features is not None else None
             self.train_target = self.train_target.to_numpy() if self.train_target is not None else None

@@ -68,4 +68,4 @@ train_x, train_y, = data.vectorize(features=train_features, target=train_target)
 
 
 model = DataModeler()
-model.fit(models = model_options, features=train_x, target=train_y)
+model.fit(features=train_x, target=train_y)
