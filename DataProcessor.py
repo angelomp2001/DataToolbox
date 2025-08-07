@@ -318,7 +318,7 @@ class DataProcessor:
         else:
             raise ValueError(f"Unknown method: {missing_values_method}")
         
-        print(f'df shape: {df.shape}')
+        print(f'df shape: {self.df.shape}')
         print(f'--- missing_values() complete\n')
         return self.df
     
@@ -467,7 +467,7 @@ class DataProcessor:
             pass
 
         print(f'Running data_splitter()...')
-        print(f'df shape start: {df.shape}')
+        print(f'df shape start: {self.df.shape}')
         if len(split_ratio) == 0 or split_ratio is None:
             print(f'(no splitting)')
             return self.df

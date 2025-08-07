@@ -108,7 +108,7 @@ dm.score(
     optimize=True,
     param_name='step_size',
     param_range=(0.001, 0.1),
-    metric='accuracy',
+    metric='r2',
     verbose=True
 )
 

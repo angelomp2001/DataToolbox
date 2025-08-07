@@ -39,6 +39,8 @@ class DataModeler:
         epochs: int = 100,
         batch_size: int = 32,
         reg_weight: float = 0.001,
+        validation_x: np.ndarray = None,
+        validation_y: np.ndarray = None,
         test_features: np.ndarray = None,
         test_target: np.ndarray = None,
         ):
@@ -50,6 +52,8 @@ class DataModeler:
         self.epochs = epochs
         self.batch_size = batch_size
         self.reg_weight = reg_weight
+        self.validation_x = validation_x
+        self.validation_y = validation_y
         self.test_features = test_features
         self.test_target = test_target
         self.w = None
@@ -104,10 +108,11 @@ class DataModeler:
         Fits model weights using batch gradient descent for linear/logistic regression using generalized linear model (GLM).
         '''
         #initialize parameters
-        self.features = features
-        self.target = target
-        X = self.features
-        y = self.target
+        self.train_features = features
+        self.train_target = target
+        X = self.train_features
+        y = self.train_target
+        
 
         # Model registry
         model_map = {
