@@ -562,20 +562,20 @@ class DataProcessor:
 
 
 
-df = pd.DataFrame({
-    'date': ['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04', '2023-01-05'],
-    'name': ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
-    'age': [25, 30, 35, 40, 45],
-    'salary': [50000, 60000, 75000, 80000, 90000],
-    'department': ['HR', 'IT', 'Sales', 'Marketing', 'Finance']
-})
-data = DataProcessor(df)
+# df = pd.DataFrame({
+#     'date': ['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04', '2023-01-05'],
+#     'name': ['Alice', 'Bob', 'Charlie', 'David', 'Eve'],
+#     'age': [25, 30, 35, 40, 45],
+#     'salary': [50000, 60000, 75000, 80000, 90000],
+#     'department': ['HR', 'IT', 'Sales', 'Marketing', 'Finance']
+# })
+# data = DataProcessor(df)
 
-data.df, encoded_values_dict = data.encode_features(
-    model_type='Machine Learning',
-    categorical_cols=['department', 'name'],
-    ordinal_cols=['date']
-)
-output = data.df
-print(encoded_values_dict)
+# data.df, encoded_values_dict = data.encode_features(
+#     model_type='Machine Learning',
+#     categorical_cols=['department', 'name'],
+#     ordinal_cols=['date']
+# )
+# output = data.df
+# print(encoded_values_dict)
 
