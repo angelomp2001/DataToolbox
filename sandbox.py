@@ -2,86 +2,100 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from data_explorers import view, see
-from data_transformers import downsample, upsample, ordinal_encoder, missing_values, feature_scaler, categorical_encoder, data_splitter, data_transformer, bootstrap
+from data_transformers import downsample, upsample, ordinal_encoder, missing_values, feature_scaler, categorical_encoder, data_splitter, data_transformer
 from best_model_picker import optimizer, best_model_picker
 from model_scorer import categorical_scorer
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
-from model_scorer import categorical_scorer
 import sys
 import pdb
 import inspect
-import numpy as np
-from sklearn.datasets import make_classification
-from sklearn.model_selection import train_test_split
-from H0_testing import split_test_plot
-import scipy.stats as st
-from statsmodels.stats.power import TTestIndPower
-from objective_functions import k_nearest, k_nearest
-import tqdm
-
-# maximize terminal output display
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', 1000)
-pd.set_option('display.colheader_justify', 'left')
+from DataProcessor import DataProcessor
+from DataModeler2 import DataModeler2
 
 # Extract and view
 df = pd.read_csv('data/sprint 8 churn.csv')
-#view(df, 'headers')
+df = df.drop(['RowNumber', 'CustomerId', 'Surname'], axis=1)  # Drop unnecessary columns
 
-df = (
-    df
-    .pipe(
+# sample df
+df = df[['CreditScore','Age', 'Tenure','Balance','NumOfProducts','HasCrCard', 'IsActiveMember','EstimatedSalary', 'Exited']]
 
-    )
+'''
+# columns=['RowNumber', 'CustomerId', 'Surname', 'CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary', 'Exited']
+'''
+
+#define target & identify ordinal categorical vars
+target = df['Exited']
+features = df.drop(target.name, axis = 1)
+random_state = 99999
+
+model_options = {
+    'Regressions': {
+        'LogisticRegression': LogisticRegression(random_state=random_state, solver='liblinear', max_iter=200)
+    },
+    'Machine Learning': {
+        'DecisionTreeClassifier': DecisionTreeClassifier(random_state=random_state),
+        'RandomForestClassifier': RandomForestClassifier(random_state=random_state),
+        
+    }
+}
+
+data = DataProcessor(df)
+data.missing_values(missing_values_method='drop', fill_value=None)
+# categorical_cols = ['Geography', 'Gender']
+# data.encode_features(model_type='Machine Learning', categorical_cols=categorical_cols)
+#data.feature_scaler(show=True, column_names=['EstimatedSalary'])
+data.split(split_ratio=(0.6, 0.2, 0.2), target_name=target.name, random_state=random_state).vectorize()
+# for old functions
+features, target = data.get_split(which='train', columns='both')
+train_features_vectorized, train_target_vectorized = data.get_vectorized(which='train', columns='all')
+
+# raw
+print(f'raw...')
+best_scores_summary_df, _, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
+    features = features,
+    target = target,
+    n_target_majority = None,
+    n_target_minority = None,
+    n_rows = None,
+    ordinal_cols = None,
+    random_state = random_state,
+    model_options = {'Regressions': {'LogisticRegression': LogisticRegression(random_state=random_state, solver='liblinear', max_iter=200)}}, #model_options,
+    split_ratio = (0.6, 0.2, 0.2),
+    missing_values_method= 'drop',
+    fill_value = None,
+    target_threshold = 0.5,
+    metric=None,
+    target_type='classification',
 )
 
-sub_df = df.loc[:4, ['Geography', 'CreditScore', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary', 'Exited']]
-print(sub_df.head())
 
-#     print(distances)
-weights = {
-    'CreditScore': 1,
-    'Age': 1,
-    'Tenure': .0,
-    'Balance': .0,
-    'NumOfProducts': .0,
-    'HasCrCard': .0,
-    'IsActiveMember': .0,
-    'EstimatedSalary': .0,
-    'Exited': .0,
-}
+# ================================================
+# ✅ Test 2: Fit using sklearn model and evaluate
+# ================================================
 
-new_row = {
-    'CreditScore': 850,
-    'Age': 43,
-    'Tenure': 2,
-    'Balance': 0,
-    'NumOfProducts': 1,
-    'HasCrCard': 1,
-    'IsActiveMember': 1,
-    'EstimatedSalary': 79084.10
-}
-output = k_nearest(dataframe_or_features=sub_df, weights_dict=None, new_row_dict=new_row, k_nearest=1)
-print(output)
-# # Grab two random samples for testing
-# s1 = df[df['Gender'] == 'Male']['CreditScore']
-# s2 = df[df['Gender'] == 'Female']['CreditScore']
-
-# # Run the plot test with bootstrap
-# result = split_test_plot_test(s1, s2, bootstrap=True)
-
-# # Show output summary in console
-# print(result)
-
-
-# samples = bootstrap(df['CreditScore'], n=2, rows=df.shape[0], random_state=123)
-
-# split_test_plot_test(samples.loc[0], samples.loc[1])
-
-
-
-
-
+valid_features_vectorized, valid_target_vectorized = data.get_split(which='valid', columns='both')
+print("\n=== Test 2: Sklearn Logistic Regression ===")
+dm = DataModeler2()
+# LogisticRegression(random_state=random_state, solver='liblinear', max_iter=200)
+dm.fit(
+    train_features_vectorized=train_features_vectorized,
+    train_target_vectorized=train_target_vectorized,
+    model_type='classification',
+    model_name='logistic_regression',
+    model_params={'random_state': random_state, 'solver': 'liblinear', 'max_iter': 200}
+    )
+dm.score(
+    valid_features_vectorized=valid_features_vectorized,
+    valid_target_vectorized=valid_target_vectorized,
+    metric='F1',
+    param_to_optimize='max_depth',
+    param_optimization_range=(1, 10)
+    )
+dm.score(
+    manual_params={'max_depth': 5.5},
+    metric='F1',
+    param_to_optimize='n_estimators',
+    param_optimization_range=(10, 100)
+)

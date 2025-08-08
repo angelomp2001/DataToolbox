@@ -23,7 +23,7 @@ def categorical_scorer(
         FN = np.sum((target == 1) & (y_pred_binary == 0))
         FP = np.sum((target == 0) & (y_pred_binary == 1))
 
-        #print(f'TN: {TN}, TP: {TP}, FN: {FN}, FP: {FP}')
+        print(f'TN: {TN}, TP: {TP}, FN: {FN}, FP: {FP}')
 
         accuracy = (TP + TN) / (TP + TN + FP + FN) if (TP + TN + FP + FN) > 0 else 0
         precision = TP / (TP + FP) if (TP + FP) > 0 else 0

@@ -49,7 +49,17 @@ def best_model_picker(
     print(f'Running model picker...')
     
     # Initialize variables
-    df = pd.concat([features, target], axis=1)
+    # Check if both are Pandas objects (DataFrame or Series)
+    if isinstance(features, (pd.DataFrame, pd.Series)) and isinstance(target, (pd.DataFrame, pd.Series)):
+        df = pd.concat([features, target], axis=1)
+    # Check if both are NumPy arrays
+    elif isinstance(features, np.ndarray) and isinstance(target, np.ndarray):
+        # Reshape target asumming it's a 1D array
+        if target.ndim == 1:
+            df = np.concatenate((features, target.reshape(-1, 1)), axis=1)
+    else:
+        raise ValueError("Both features and target must be either Pandas objects or NumPy arrays")
+    
     model_scores = pd.DataFrame()
     optimized_hyperparameters = {}
     

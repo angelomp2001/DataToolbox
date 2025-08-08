@@ -12,11 +12,11 @@ import sys
 import pdb
 import inspect
 from DataProcessor import DataProcessor
-from DataModeler import DataModeler
+from DataModeler2 import DataModeler2
 
 # Extract and view
 df = pd.read_csv('data/sprint 8 churn.csv')
-
+df = df.drop(['RowNumber', 'CustomerId', 'Surname'], axis=1)  # Drop unnecessary columns
 '''
 # columns=['RowNumber', 'CustomerId', 'Surname', 'CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary', 'Exited']
 '''
@@ -37,99 +37,105 @@ model_options = {
     }
 }
 
-
-
-#raw
-# print(f'raw...')
-# best_scores_summary_df, _, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
-#     features = features,
-#     target = target,
-#     n_target_majority = None,
-#     n_target_minority = None,
-#     n_rows = None,
-#     ordinal_cols = None,
-#     random_state = random_state,
-#     model_options = model_options,
-#     split_ratio = (0.6, 0.2, 0.2),
-#     missing_values_method= 'drop',
-#     fill_value = None,
-#     target_threshold = 0.5,
-#     metric=None,
-#     target_type='classification'
-# )
-
 data = DataProcessor(df)
 data.missing_values(missing_values_method='drop', fill_value=None)
-categorical_cols = ['Surname', 'Geography', 'Gender']
+categorical_cols = ['Geography', 'Gender']
 data.encode_features(model_type='Machine Learning', categorical_cols=categorical_cols)
-data.feature_scaler()
-train_features, train_target, validation_features, validation_target, test_features, test_target = data.split(split_ratio=(0.6, 0.2, 0.2), target=target.name)
-train_x, train_y, = data.vectorize(features=train_features, target=train_target)
-validation_x, validation_y = data.vectorize(features=validation_features, target=validation_target)
+data.feature_scaler(show=True, column_names=['CreditScore', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'EstimatedSalary'])
+data.split(split_ratio=(0.6, 0.2, 0.2), target_name=target.name, random_state=random_state).vectorize()
+valid_features, valid_target = data.get_split(which='valid', columns='all')
+train_features_vectorized, train_target_vectorized = data.get_vectorized(which='train', columns='all',show=True)
+valid_features_vectorized, valid_target_vectorized = data.get_vectorized(which='valid', columns='all')
 
-# ✅ Test 1: Fit GLM and score
-# ============================
-print("\n=== Test 1: GLM .fit() and .score() ===")
-dm = DataModeler()
-dm.fit(features=train_x, target=train_y, model_type='GLM', verbose=False)
-dm.score(X_validation=validation_x, y_validation=validation_y, verbose=True)
+# raw
+print(f'raw...')
+best_scores_summary_df, _, best_scores_by_model, model_scores, transformed_data, model_options = best_model_picker(
+    features = features,
+    target = target,
+    n_target_majority = None,
+    n_target_minority = None,
+    n_rows = None,
+    ordinal_cols = None,
+    random_state = random_state,
+    model_options = {'Regressions': {'LogisticRegression': LogisticRegression(random_state=random_state, solver='liblinear', max_iter=200)}}, #model_options,
+    split_ratio = (0.6, 0.2, 0.2),
+    missing_values_method= 'drop',
+    fill_value = None,
+    target_threshold = 0.5,
+    metric=None,
+    target_type='classification',
+)
+
 
 # ================================================
 # ✅ Test 2: Fit using sklearn model and evaluate
 # ================================================
 print("\n=== Test 2: Sklearn Logistic Regression ===")
-dm.fit(features=train_x, target=train_y, model_type='classification', model_name='logistic_regression')
-dm.score(X_validation=validation_x, y_validation=validation_y, verbose=True)
-
-# =====================================================
-# ✅ Test 3: Manual hyperparameter override before score
-# =====================================================
-print("\n=== Test 3: Manual Params Override ===")
+dm = DataModeler2()
+# LogisticRegression(random_state=random_state, solver='liblinear', max_iter=200)
+dm.fit(
+    features=train_features_vectorized,
+    target=train_target_vectorized,
+    model_type='classification',
+    model_name='logistic_regression',
+    model_params={'solver': 'liblinear', 'max_iter': 200}
+    )
 dm.score(
-    X_validation=validation_x,
-    y_validation=validation_y,
-    manual_params={"step_size": 0.005, "reg_weight": 0.0005},
-    verbose=True
-)
+    X_validation=valid_features_vectorized,
+    y_validation=valid_target_vectorized,
+    manual_params={'threshold': 0.5},
+    metric='F1',
+    verbose=True)
 
-# ==============================================================
-# ✅ Test 4: Optimize step_size using bisection search on GLM
-# ==============================================================
+# # =====================================================
+# # ✅ Test 3: Manual hyperparameter override before score
+# # =====================================================
+# print("\n=== Test 3: Manual Params Override ===")
+# dm.score(
+#     X_validation=validation_x,
+#     y_validation=validation_y,
+#     manual_params={"step_size": 0.005, "reg_weight": 0.0005},
+#     verbose=True
+# )
 
-print("\n=== Test 4: Optimize step_size for GLM ===")
-dm = DataModeler(
-    random_state=42,
-    test_features=validation_x,
-    test_target=validation_y
-)
-dm.score(
-    X_validation=validation_x,
-    y_validation=validation_y,
-    optimize=True,
-    param_name='step_size',
-    param_range=(0.001, 0.1),
-    metric='r2',
-    verbose=True
-)
+# # ==============================================================
+# # ✅ Test 4: Optimize step_size using bisection search on GLM
+# # ==============================================================
 
-# =============================================================
-# ✅ Test 5: Optimize reg_weight using bisection search on GLM
-# =============================================================
-print("\n=== Test 5: Optimize reg_weight ===")
-dm = DataModeler(
-    random_state=42,
-    test_features=validation_x,
-    test_target=validation_y
-)
-dm.score(
-    X_validation=validation_x,
-    y_validation=validation_y,
-    optimize=True,
-    param_name='reg_weight',
-    param_range=(0.00001, 0.1),
-    metric='f1',
-    verbose=True
-)
+# print("\n=== Test 4: Optimize step_size for GLM ===")
+# dm = DataModeler2(
+#     random_state=42,
+#     test_features=validation_x,
+#     test_target=validation_y
+# )
+# dm.score(
+#     X_validation=validation_x,
+#     y_validation=validation_y,
+#     optimize=True,
+#     param_name='step_size',
+#     param_range=(0.001, 0.1),
+#     metric='R2',
+#     verbose=True
+# )
+
+# # =============================================================
+# # ✅ Test 5: Optimize reg_weight using bisection search on GLM
+# # =============================================================
+# print("\n=== Test 5: Optimize reg_weight ===")
+# dm = DataModeler2(
+#     random_state=42,
+#     test_features=validation_x,
+#     test_target=validation_y
+# )
+# dm.score(
+#     X_validation=validation_x,
+#     y_validation=validation_y,
+#     optimize=True,
+#     param_name='reg_weight',
+#     param_range=(0.00001, 0.1),
+#     metric='f1',
+#     verbose=True
+# )
 
 # #test 1
 # model = DataModeler()
