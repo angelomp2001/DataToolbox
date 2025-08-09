@@ -17,7 +17,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 class DataModeler2:
     def __init__(
         self,
-        models: dict = None,
+        model_type: str = None,  # 'classification', 'regression'
+        model_name: str = None,  # optional: 'xgboost', 'lgbm', 'catboost',
         features: np.ndarray = None,
         target: np.ndarray = None,
         random_state: int = 12345,
@@ -25,12 +26,13 @@ class DataModeler2:
         epochs: int = 100,
         batch_size: int = 32,
         reg_weight: float = 0.001,
-        validation_x: np.ndarray = None,
-        validation_y: np.ndarray = None,
+        valid_features_vectorized: np.ndarray = None,
+        valid_target_vectorized: np.ndarray = None,
         test_features: np.ndarray = None,
         test_target: np.ndarray = None,
     ):
-        self.models = models
+        self.model_type = model_type
+        self.model_name = model_name
         self.features = features
         self.target = target
         self.random_state = random_state
@@ -38,8 +40,6 @@ class DataModeler2:
         self.epochs = epochs
         self.batch_size = batch_size
         self.reg_weight = reg_weight
-        self.validation_x = validation_x
-        self.validation_y = validation_y
         self.test_features = test_features
         self.test_target = test_target
         self.w = None
@@ -54,43 +54,19 @@ class DataModeler2:
         self.df_vectorized = None
         self.train_features_vectorized = None
         self.train_target_vectorized = None
-        self.valid_features_vectorized = None
-        self.valid_target_vectorized = None
+        self.valid_features_vectorized = valid_features_vectorized
+        self.valid_target_vectorized = valid_target_vectorized
         self.test_features_vectorized = None
         self.test_target_vectorized = None
         self.link = None
         self.best_params_dict = {}
         self.model_params = {}
-
-    def fit(
-        self,
-        train_features_vectorized: np.ndarray,
-        train_target_vectorized: np.ndarray,
-        model_type: str = 'auto',  # 'classification', 'regression'
-        model_name: str = None,  # optional: 'xgboost', 'lgbm', 'catboost',
-        model_params: dict = None,  # optional
-        verbose: bool = False
-    ):
-        '''
-        Fits model weights using a standard model (no internal GLM anymore).
-        '''
-        # initialize parameters
-        self.train_features_vectorized = train_features_vectorized
-        self.train_target_vectorized = train_target_vectorized
-        X = self.train_features_vectorized
-        y = self.train_target_vectorized
-        model_params = model_params or {}
-        self.model_params = getattr(self, "model_params", {})
-        self.model_params.update(model_params)
-
-
-        # Model registry
-        model_map = {
+        self.model_map = {
             'classification': {
-                'logistic_regression': LogisticRegression,
-                'decision_tree': DecisionTreeClassifier,
-                'random_forest': RandomForestClassifier,
-                'knn': KNeighborsClassifier,
+                'LogisticRegression': LogisticRegression,
+                'DecisionTreeClassifier': DecisionTreeClassifier,
+                'RandomForestClassifier': RandomForestClassifier,
+                'KNeighborsClassifier': KNeighborsClassifier,
                 'xgboost': xgb.XGBClassifier,
                 'lgbm': lgb.LGBMClassifier,
                 'catboost': cb.CatBoostClassifier,
@@ -104,32 +80,94 @@ class DataModeler2:
             }
         }
 
+
+    def fit(
+        self,
+        train_features_vectorized: np.ndarray = None,
+        train_target_vectorized: np.ndarray = None,
+        model_type: str = None,  # 'classification', 'regression'
+        model_name: str = None,  # optional: 'xgboost', 'lgbm', 'catboost',
+        model_params: dict = None,  # optional
+        verbose: bool = False
+    ):
+        '''
+        Fits model weights based on model type and parameters.
+        If model_type is 'auto', it will determine based on target variable.
+        '''
+        # initialize parameters
+        if train_features_vectorized is not None and train_target_vectorized is not None:
+            self.train_features_vectorized = train_features_vectorized
+            self.train_target_vectorized = train_target_vectorized
+        else:
+            if self.features is not None and self.target is not None:
+                self.train_features_vectorized = self.features
+                self.train_target_vectorized = self.target
+            else:
+                raise ValueError("Must provide training data or set .features and .target")
+        
+        X = self.train_features_vectorized
+        y = self.train_target_vectorized
+        model_params = model_params or {}
+        self.model_params = getattr(self, "model_params", {})
+        self.model_params.update(model_params)
+
+
+        # Model registry
+        model_map = self.model_map
+
         # Auto detect model type if not provided
-        if model_type == 'auto':
-            model_type = 'classification' if np.unique(y).size == 2 else 'regression'
+        if model_type is not None:
+            if model_type in model_map:
+                self.model_type = model_type
+            else:
+                raise ValueError(f"Invalid model_type: {model_type}. Must be one of {list(model_map.keys())}.")
+        else:
+            if self.model_type is not None:
+                model_type = self.model_type
+            else:
+                # Auto-detect model type based on target variable
+                model_type = 'classification' if np.unique(y).size == 2 else 'regression'
 
         # Determine default model if not specified
-        if model_name is None:
-            model_name = list(model_map[model_type].keys())[0]
+        if model_name is not None and not isinstance(model_name, list):
+            if model_name in model_map[model_type]:
+                self.model_name = model_name
+        elif model_name is None:
+            if self.model_name is not None:
+                model_name = self.model_name
+            else:
+                print(f"Model name not specified, using default for {model_type}.")
 
-        # Get model instance
-        model_class = model_map[model_type][model_name]
-        model = model_class(**self.model_params)
+        # set model
+        if isinstance(model_name, list):
+            for name in model_name:
+                if name in model_map[model_type]:
+                    model_class = model_map[model_type][name]
+                    model = model_class(**self.model_params)
+                    print(f"Training {name} for {model_type} with params: {self.model_params}")
+                    # Fit the model
+                    self.fitted_model = model.fit(X, y) 
+                    
+                    if verbose:
+                        print(f"Trained {name} for {model_type}.")
 
-
-            
-        # define link function (links x to y) 'logit' for binary, 'identity' for continuous.
-        n_unique = np.unique(y).size
-        if n_unique == 2:
-            link = 'logit'
         else:
-            link = 'identity'
+            # Setting model to the first one, or the specific one if mentioned
+            if model_name in model_map[model_type]:
+                # save model name to self for use in score method
+                self.model_name = model_name
+                model_class = model_map[model_type][model_name]
+                model = model_class(**self.model_params)
+                
+                # Fit the model
+                self.fitted_model = model.fit(X, y)
 
-        model.fit(X, y)
-        self.fitted_model = model
-        self.link = link
-        if verbose:
-            print(f"Trained {model_name} for {model_type}.")
+                if verbose:
+                    print(f"Trained {model_name} for {model_type}.")
+
+            else:
+                raise ValueError(f"Invalid model_name: {model_name}. Must be one of {list(model_map[model_type].keys())}.")
+        
 
     def predict(self, X: np.ndarray, return_proba: bool = False) -> np.ndarray:
         if self.fitted_model is None:
@@ -150,9 +188,9 @@ class DataModeler2:
         param_optimization_range: tuple = None,
         tol: float = 1e-4,
         max_iter: int = 20,
-        metric: str = 'auto',
+        metric: str = None, # 'Accuracy', 'Precision', 'Recall', 'F1', 'R2', 'MSE'
         manual_params: dict = None,
-        verbose: bool = True
+        verbose: bool = False
     ):
         """
         Score the model or optimize a hyperparameter via bisection.
@@ -163,7 +201,7 @@ class DataModeler2:
             - param_optimization_range: (low, high) range to search
             - tol: convergence tolerance
             - max_iter: max bisection iterations
-            - metric: 'Accuracy', 'Precision', 'Recall', 'F1', 'R2', 'MSE', or 'auto'
+            - metric: 'Accuracy', 'Precision', 'Recall', 'F1', 'R2', 'MSE', ROC AUC', 'PR AUC'
             - manual_params: dict of parameters to set before scoring
         """
         # Store validation data internally if provided
@@ -183,14 +221,29 @@ class DataModeler2:
         if manual_params:
             for k, v in manual_params.items():
                 setattr(self, k, v)
+                # Update model_params with the new manual parameters
+                self.model_params[k] = v
+                
+                # Refit the model with updated parameters
+                model_class = self.model_map[self.model_type][self.model_name]
+                
+                # Create a new model instance with updated parameters
+                model = model_class(**self.model_params)
+
+                # Fit the model with updated parameters
+                self.fitted_model = model.fit(self.train_features_vectorized, self.train_target_vectorized)
+
             if verbose:
                 print(f"Manually updated hyperparameters: {manual_params}")
-        ################### not self? ################
-        def eval_model(features, target):
-            self.fit(features, target)
-            y_pred = self.predict(valid_features_vectorized)
+        
+        def eval_model(
+                features: np.ndarray,
+                target: np.ndarray,
+                ):
+            #self.fit(features, target)
+            y_pred = self.predict(features)
             y_proba = self.predict(valid_features_vectorized, return_proba=True) if self.link == 'logit' or hasattr(self.fitted_model, "predict_proba") else None
-
+            
             scores = {
                 'Accuracy': accuracy_score(valid_target_vectorized, y_pred),
                 'Precision': precision_score(valid_target_vectorized, y_pred, zero_division=0),
@@ -214,13 +267,18 @@ class DataModeler2:
                     print(f"{metric_name}: {value:.4f}" if value is not None else f"{metric_name}: N/A")
 
             # Return all as default for optimization
-            return scores if metric == 'auto' else scores.get(metric, None)
+            if metric is None:
+                print(scores)
+                return scores
+            print(f'{metric}: {scores.get(metric, None)}')
+            return scores.get(metric, None)
 
         if not param_to_optimize:
+            
             return eval_model(features=valid_features_vectorized, target=valid_target_vectorized)
 
-        if not param_optimization_range:
-            raise ValueError("Must specify param_optimization_range to optimize")
+        if not param_optimization_range or metric is None:
+            raise ValueError("Must specify param_optimization_range to optimize and a metric to optimize against.")
 
         ## Bisection search for optimal hyperparameter
         # set vars
@@ -231,11 +289,16 @@ class DataModeler2:
         # optimization loop
         for _ in range(max_iter):
             mid = (low + high) / 2
-            setattr(self, param_to_optimize, mid)
+            #setattr(self, param_to_optimize, mid)
+            self.model_params[param_to_optimize] = int(mid)
+
+            model_class = self.model_map[self.model_type][self.model_name]
+            model = model_class(**self.model_params)
+            self.fitted_model = model.fit(self.train_features_vectorized, self.train_target_vectorized)
             score_val = eval_model(features=valid_features_vectorized, target=valid_target_vectorized)
 
             if verbose:
-                print(f"{param_to_optimize} = {mid:.6f}, {metric} = {score_val:.6f}" if score_val is not None else f"{param_to_optimize} = {mid:.6f}, {metric} = N/A")
+               print(f"{param_to_optimize} = {mid:.6f}, {metric} = {score_val:.6f}" if score_val is not None else f"{param_to_optimize} = {mid:.6f}, {metric} = N/A")
 
             if score_val is not None and score_val > best_score:
                 best_score = score_val
@@ -254,8 +317,8 @@ class DataModeler2:
             self.best_params_dict = {}
         self.best_params_dict[param_to_optimize] = best_param
 
-        if verbose:
-            print(f"Optimal {{'{param_to_optimize}': {best_param}}}\n{metric}: {best_score}")
+        #if verbose:
+        print(f"Optimal {{'{param_to_optimize}': {best_param}}}\n{metric}: {best_score}")
 
         return best_score
 
