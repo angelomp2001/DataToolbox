@@ -49,8 +49,8 @@ data.missing_values(missing_values_method='drop', fill_value=None)
 data.split(split_ratio=(0.6, 0.2, 0.2), target_name=target.name, random_state=random_state).vectorize()
 # for old functions
 features, target = data.get_split(which='train', columns='both')
-train_features_vectorized, train_target_vectorized = data.get_vectorized(which='train', columns='all')
-features_vectorized, target_vectorized = data.get_vectorized(which='df', columns='both', show=True)
+train_features_vectorized, train_target_vectorized = data.get_vectorized(which='train', columns='both')
+features_vectorized, target_vectorized = data.get_vectorized(which='df', columns='both')
 valid_features_vectorized, valid_target_vectorized = data.get_vectorized(which='valid', columns='both')
 # # raw
 # print(f'raw...')
@@ -71,95 +71,37 @@ valid_features_vectorized, valid_target_vectorized = data.get_vectorized(which='
 #     target_type='classification',
 # )
 
-
-# test 1 & 11: .fit() train features and target, model_type, model_name
-data = DataModeler2(
-    valid_features_vectorized=valid_features_vectorized,
-    valid_target_vectorized=valid_target_vectorized
-)
+Logistic_Regression = DataModeler2()
 print('test 1')
-data.fit(
+Logistic_Regression.fit(
     train_features_vectorized=train_features_vectorized,
     train_target_vectorized=train_target_vectorized,
     model_type='classification',
-    model_name='RandomForestClassifier', #DecisionTreeClassifier(random_state=random_state)
-    model_params={'random_state': random_state},
+    model_name=['LogisticRegression'], #'DecisionTreeClassifier', 'RandomForestClassifier', 'xgboost', 'lgbm'],
+    model_params={'solver': 'liblinear', 'max_iter': 200, 'class_weight': 'balanced'} # ,'learning_rate': 0.1, 'eval_metric': 'logloss', 'tree_method': 'auto'}
     )
-
-# test 2: .fit() train features and target, no model_type, no model_name
-# this will use the default model options
-# print('test 2')
-# data.fit(
-#     train_features_vectorized=train_features_vectorized,
-#     train_target_vectorized=train_target_vectorized,
-#     model_type='classification',
-#     model_name='LogicticRegression'
-#     )
-
-# test 3: no specificed models, and does default
-# print('test 3')
-# data.fit(
-#     train_features_vectorized=train_features_vectorized,
-#     train_target_vectorized=train_target_vectorized
-# )
-
-# test list input
-# print('test 3.5')
-# data.fit(
-#     train_features_vectorized=train_features_vectorized,
-#     train_target_vectorized=train_target_vectorized,
-#     model_name=['LogisticRegression', 'DecisionTreeClassifier', 'RandomForestClassifier']
-# )
-
-# test 4: .score with valid features and target
-print('test 4')
-data.score(
+Logistic_Regression.score(
+        valid_features_vectorized=valid_features_vectorized,
+        valid_target_vectorized=valid_target_vectorized,
+        metric='ROC AUC',
+        verbose=False
+    )
+tree_models = DataModeler2()
+tree_models.fit(
+    train_features_vectorized=train_features_vectorized,
+    train_target_vectorized=train_target_vectorized,
+    model_type='classification',
+    model_name=['DecisionTreeClassifier', 'RandomForestClassifier', 'xgboost']
+    )
+tree_models.score(
     valid_features_vectorized=valid_features_vectorized,
     valid_target_vectorized=valid_target_vectorized,
-    metric='F1',
-    manual_params={'max_depth': 10},
-    verbose=True  
+    param_to_optimize='max_depth',
+    param_optimization_range=(5, 20),
+    metric='ROC AUC'
 )
-
-#test 5: .score with valid features and target, manual params
-# print('test 5')
-# data.score(
-#     valid_features_vectorized=valid_features_vectorized,
-#     valid_target_vectorized=valid_target_vectorized,
-#     metric='F1'
-# )
-
-# # test 6: .score with valid features and target, no manual params or metric
-# print('test 6')
-# data.score(
-#     valid_features_vectorized=valid_features_vectorized,
-#     valid_target_vectorized=valid_target_vectorized
-# )
-
-# # test 7: .score return all metrics 
-# print('test 7')
-# data.score(
-#     valid_features_vectorized=valid_features_vectorized,
-#     valid_target_vectorized=valid_target_vectorized,
-# )
-
-# # test 8: no data, use self
-# print('test 8')
-# data.score()
-
-# test 9: chain with manual params
-# print('test 9')
-# data.score(
-#     param_to_optimize= 'n_estimators',
-#     param_optimization_range=(1, 100),
-#     metric='F1'
-# )
-
-# # test 10: chain with manual params and metric
-# print('test 10')
-# data.score(
-#     manual_params={'max_depth': 5},
-#     param_to_optimize='n_estimators',
-#     param_optimization_range=(10, 100),
-#     metric='ROC AUC'
-# )
+tree_models.score(
+    param_to_optimize='n_estimators',
+    param_optimization_range=(50, 200),
+    metric='ROC AUC'
+    )

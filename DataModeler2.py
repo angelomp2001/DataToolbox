@@ -142,9 +142,10 @@ class DataModeler2:
         if isinstance(model_name, list):
             for name in model_name:
                 if name in model_map[model_type]:
+                    self.model_name = name
                     model_class = model_map[model_type][name]
                     model = model_class(**self.model_params)
-                    print(f"Training {name} for {model_type} with params: {self.model_params}")
+                    print(f"Training {model}")
                     # Fit the model
                     self.fitted_model = model.fit(X, y) 
                     
@@ -268,7 +269,8 @@ class DataModeler2:
 
             # Return all as default for optimization
             if metric is None:
-                print(scores)
+                for metric_name, value in scores.items():
+                    print(f"{metric_name}: {value:.4f}" if value is not None else f"{metric_name}: N/A")
                 return scores
             print(f'{metric}: {scores.get(metric, None)}')
             return scores.get(metric, None)
