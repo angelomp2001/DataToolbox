@@ -74,18 +74,18 @@ print("\n=== Test 2: Sklearn Logistic Regression ===")
 dm = DataModeler2()
 # LogisticRegression(random_state=random_state, solver='liblinear', max_iter=200)
 dm.fit(
-    features=train_features_vectorized,
-    target=train_target_vectorized,
+    train_features_vectorized=train_features_vectorized,
+    train_target_vectorized=train_target_vectorized,
     model_type='classification',
-    model_name='logistic_regression',
-    model_params={'solver': 'liblinear', 'max_iter': 200}
+    model_name='LogisticRegression'
     )
-dm.score(
-    X_validation=valid_features_vectorized,
-    y_validation=valid_target_vectorized,
-    manual_params={'threshold': 0.5},
-    metric='F1',
-    verbose=True)
+scores = dm.score(
+    valid_features_vectorized=valid_features_vectorized,
+    valid_target_vectorized=valid_target_vectorized,
+    param_to_optimize= 'C',
+    param_optimization_range= (1, 3),
+    metric='Accuracy')
+
 
 # # =====================================================
 # # ✅ Test 3: Manual hyperparameter override before score
@@ -112,8 +112,8 @@ dm.score(
 #     X_validation=validation_x,
 #     y_validation=validation_y,
 #     optimize=True,
-#     param_name='step_size',
-#     param_range=(0.001, 0.1),
+#     param_name='max_depth',
+#     param_range=(5, 20),
 #     metric='R2',
 #     verbose=True
 # )

@@ -72,8 +72,8 @@ class DataModeler2:
                 'catboost': cb.CatBoostClassifier,
             },
             'regression': {
-                'linear_regression': LinearRegression,
-                'random_forest': RandomForestRegressor,
+                'LinearRegression': LinearRegression,
+                'RandomForestRegressor': RandomForestRegressor,
                 'xgboost': xgb.XGBRegressor,
                 'lgbm': lgb.LGBMRegressor,
                 'catboost': cb.CatBoostRegressor,
@@ -189,7 +189,7 @@ class DataModeler2:
         param_optimization_range: tuple = None,
         tol: float = 1e-4,
         max_iter: int = 20,
-        metric: str = None, # 'Accuracy', 'Precision', 'Recall', 'F1', 'R2', 'MSE'
+        metric: str = None, # 'Accuracy', 'Precision', 'Recall', 'F1', 'R2', 'RMSE'
         manual_params: dict = None,
         verbose: bool = False
     ):
@@ -202,7 +202,7 @@ class DataModeler2:
             - param_optimization_range: (low, high) range to search
             - tol: convergence tolerance
             - max_iter: max bisection iterations
-            - metric: 'Accuracy', 'Precision', 'Recall', 'F1', 'R2', 'MSE', ROC AUC', 'PR AUC'
+            - metric: 'Accuracy', 'Precision', 'Recall', 'F1', 'R2', 'RMSE', ROC AUC', 'PR AUC'
             - manual_params: dict of parameters to set before scoring
         """
         # Store validation data internally if provided
@@ -243,18 +243,44 @@ class DataModeler2:
                 ):
             #self.fit(features, target)
             y_pred = self.predict(features)
-            y_proba = self.predict(valid_features_vectorized, return_proba=True) if self.link == 'logit' or hasattr(self.fitted_model, "predict_proba") else None
+            print(f'y_pred: {y_pred.shape}')
+            y_proba = self.predict(valid_features_vectorized, return_proba=True) if self.model_type == 'classification' else None
             
-            scores = {
-                'Accuracy': accuracy_score(valid_target_vectorized, y_pred),
-                'Precision': precision_score(valid_target_vectorized, y_pred, zero_division=0),
-                'Recall': recall_score(valid_target_vectorized, y_pred, zero_division=0),
-                'F1': f1_score(valid_target_vectorized, y_pred, zero_division=0),
-                'MSE': mean_squared_error(valid_target_vectorized, y_pred) if self.link == 'identity' else None,
-                'R2': r2_score(valid_target_vectorized, y_pred) if self.link == 'identity' else None,
-                'ROC AUC': None,
-                'PR AUC': None
-            }
+            scores = {}
+
+            try:
+                scores['Accuracy'] = accuracy_score(valid_target_vectorized, y_pred)
+            except Exception as e:
+                scores['Accuracy'] = f"Error: {e}"
+
+            try:
+                scores['Precision'] = precision_score(valid_target_vectorized, y_pred, zero_division=0)
+            except Exception as e:
+                scores['Precision'] = f"Error: {e}"
+
+            try:
+                scores['Recall'] = recall_score(valid_target_vectorized, y_pred, zero_division=0)
+            except Exception as e:
+                scores['Recall'] = f"Error: {e}"
+
+            try:
+                scores['F1'] = f1_score(valid_target_vectorized, y_pred, zero_division=0)
+            except Exception as e:
+                scores['F1'] = f"Error: {e}"
+
+            try:
+                scores['RMSE'] = np.sqrt(mean_squared_error(valid_target_vectorized, y_pred))
+            except Exception as e:
+                scores['RMSE'] = f"Error: {e}"
+
+            try:
+                scores['R2'] = r2_score(valid_target_vectorized, y_pred)
+            except Exception as e:
+                scores['R2'] = f"Error: {e}"
+
+            # Placeholder for ROC AUC and PR AUC if applicable
+            scores['ROC AUC'] = None
+            scores['PR AUC'] = None
 
             if y_proba is not None:
                 try:
@@ -265,12 +291,12 @@ class DataModeler2:
 
             if verbose:
                 for metric_name, value in scores.items():
-                    print(f"{metric_name}: {value:.4f}" if value is not None else f"{metric_name}: N/A")
+                    print(f"{metric_name}: {value}" if value is not None else f"{metric_name}: N/A")
 
             # Return all as default for optimization
             if metric is None:
                 for metric_name, value in scores.items():
-                    print(f"{metric_name}: {value:.4f}" if value is not None else f"{metric_name}: N/A")
+                    print(f"{metric_name}: {value}" if value is not None else f"{metric_name}: N/A")
                 return scores
             print(f'{metric}: {scores.get(metric, None)}')
             return scores.get(metric, None)
