@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 from DataProcessor import DataProcessor
-from DataModeler2 import DataModeler2
+from DataModeler import DataModeler2
 
 # Load the data
 train_features_vectorized = pd.read_csv('car_data_train_features_vectorized.csv', header=None)
@@ -47,11 +47,13 @@ dm.fit(
     train_features_vectorized=train_features_vectorized,
     train_target_vectorized=train_target_vectorized,
     model_type='regression',
-    model_name='xgboost'
+    model_name='catboost',
     )
 
 scores = dm.score(
     valid_features_vectorized=valid_features_vectorized,
     valid_target_vectorized=valid_target_vectorized,
     metric='RMSE',
+    param_to_optimize='n_estimators',
+    param_optimization_range=(50, 200),
     verbose=True)

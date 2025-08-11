@@ -12,7 +12,7 @@ import sys
 import pdb
 import inspect
 from DataProcessor import DataProcessor
-from DataModeler2 import DataModeler2
+from DataModeler import DataModeler2
 
 # Extract and view
 df = pd.read_csv('data/sprint 8 churn.csv')
