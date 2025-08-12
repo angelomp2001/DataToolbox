@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from data_transformers import ordinal_encoder
+from functions.data_transformers import ordinal_encoder
 
 def k_nearest(
     dataframe_or_features: pd.DataFrame,

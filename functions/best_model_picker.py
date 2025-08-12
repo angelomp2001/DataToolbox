@@ -8,10 +8,10 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
-from data_transformers import data_transformer
-from model_scorer import categorical_scorer
+from functions.data_transformers import data_transformer
+from functions.model_scorer import categorical_scorer
 import matplotlib.pyplot as plt
-from optimizer import optimizer
+from functions.optimizer import optimizer
 from sklearn.metrics import roc_auc_score, average_precision_score
 
 

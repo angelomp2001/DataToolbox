@@ -1,10 +1,10 @@
 #everything starts here
 import pandas as pd
 import matplotlib.pyplot as plt
-from data_explorers import view, see
-from data_transformers import downsample, upsample, ordinal_encoder, missing_values, feature_scaler, categorical_encoder, data_splitter, data_transformer
-from best_model_picker import optimizer, best_model_picker
-from model_scorer import categorical_scorer
+from functions.data_explorers import view, see
+from functions.data_transformers import downsample, upsample, ordinal_encoder, missing_values, feature_scaler, categorical_encoder, data_splitter, data_transformer
+from functions.best_model_picker import optimizer, best_model_picker
+from functions.model_scorer import categorical_scorer
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier

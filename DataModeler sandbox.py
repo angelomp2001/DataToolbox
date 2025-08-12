@@ -1,10 +1,10 @@
 #everything starts here
 import pandas as pd
 import matplotlib.pyplot as plt
-from data_explorers import view, see
-from data_transformers import downsample, upsample, ordinal_encoder, missing_values, feature_scaler, categorical_encoder, data_splitter, data_transformer
-from best_model_picker import optimizer, best_model_picker
-from model_scorer import categorical_scorer
+from functions.data_explorers import view, see
+from functions.data_transformers import downsample, upsample, ordinal_encoder, missing_values, feature_scaler, categorical_encoder, data_splitter, data_transformer
+from functions.best_model_picker import optimizer, best_model_picker
+from functions.model_scorer import categorical_scorer
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -12,7 +12,7 @@ import sys
 import pdb
 import inspect
 from DataProcessor import DataProcessor
-from DataModeler import DataModeler2
+from DataModeler import DataModeler
 
 # Extract and view
 df = pd.read_csv('data/sprint 8 churn.csv')
@@ -71,7 +71,7 @@ valid_features_vectorized, valid_target_vectorized = data.get_vectorized(which='
 #     target_type='classification',
 # )
 
-Logistic_Regression = DataModeler2()
+Logistic_Regression = DataModeler()
 print('test 1')
 Logistic_Regression.fit(
     train_features_vectorized=train_features_vectorized,
@@ -86,7 +86,7 @@ Logistic_Regression.score(
         metric='ROC AUC',
         verbose=False
     )
-tree_models = DataModeler2()
+tree_models = DataModeler()
 tree_models.fit(
     train_features_vectorized=train_features_vectorized,
     train_target_vectorized=train_target_vectorized,
