@@ -10,8 +10,11 @@ df = pd.read_csv('data/sprint 8 churn.csv')
 # test 1:
 df = DataExplorer(df)
 
-# return first column view and chart
-df.view(view='headers', return_column=0)
+# return first column view and one column
+df.view(view='headers', column=0).see()
+
+# return first column view and one column
+# df.view(view='headers', return_column=0)
 
 
 # # return first column view and chart
