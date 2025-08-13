@@ -11,7 +11,7 @@ df = pd.read_csv('data/sprint 8 churn.csv')
 df = DataExplorer(df)
 
 # return first column view and one column
-df.view(view='headers', column=0).see()
+df.view(view='headers', column=3).see()
 
 # return first column view and one column
 # df.view(view='headers', return_column=0)

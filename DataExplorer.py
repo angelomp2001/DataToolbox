@@ -164,41 +164,44 @@ class DataExplorer:
         ## validate inputs
         if column is None:
             if self.column is not None:
-                cols = self.column
+                cols = [self.column]
             else:
-                cols = self.df.iloc[:, :]
+                cols = range(len(self.df.columns))
         elif isinstance(column, int):
-            cols = self.df.iloc[:, cols]
-
+            cols = [column]
+        
         # Determine the x-axis label based on the provided argument or index name
         if x_axis_name is None:
             try:
-                x_label = self.df[x_axis_name] or "Index"
+                x_label = self.df[x_axis_name]
             except:
                 x_label = "Index"
         else:
             try:
-                x_label = x_axis_name or "Index"
+                x_label = x_axis_name
             except AttributeError:
                 x_label = "Index"
         
         ## Color map for different lines
-        color_map = plt.cm.get_cmap('tab10', len(self.df.iloc[:,cols]))
-
+        color_map = plt.cm.get_cmap('tab10', len(self.df.iloc[:,max(cols)]))
+        print(f'len(self.df.iloc[:,cols]): {len(self.df.iloc[:,cols])}')
         # Plot each column
-        for i, col in enumerate(range(cols)):
+        for i, col in enumerate(cols):
+            print(f'col: {col}, i: {i}')
             # layout
             fig, ax = plt.subplots(figsize=(12, 6))
             
             # plot by col dtype
             dtype = self.df.iloc[:,col].dtype
             # if col is continuous, plot histogram with normal distribution
-            if x_axis_name in None:            
-                if pd.api.types.is_numeric_dtype(dtype) and self.df[col].nunique() >= 10:
-                    sns.histplot(self.df[col], bins=30, kde=False, color=color_map(i), ax=ax)
+            
+            if x_axis_name is None: 
+                
+                if pd.api.types.is_numeric_dtype(dtype) and self.df.iloc[:,col].nunique() >= 10:
+                    sns.histplot(self.df.iloc[:,col], bins=30, kde=False, color=color_map(i), ax=ax)
                     
                     # Normal distribution parameters
-                    mu, std = norm.fit(self.df[col].dropna())
+                    mu, std = norm.fit(self.df.iloc[:,col].dropna())
 
                     # get plot x min and max
                     xmin, xmax = plt.xlim()
@@ -213,33 +216,33 @@ class DataExplorer:
                     ax2 = ax.twinx()
 
                     # plot normalized PDF (subtract min from all values, then multiple by p)
-                    ax2.plot(x, p * (self.df[col].dropna().max() - self.df[col].dropna().min()), color=color_map(i+1))
+                    ax2.plot(x, p * (self.df.iloc[:,col].dropna().max() - self.df.iloc[:,col].dropna().min()), color=color_map(i+1))
 
                     # y axis label
                     ax2.set_ylabel(f'Normal dist fit: $\mu$={mu:.2f}, $\sigma$={std:.2f}', color=color_map(i+1))
 
                     # set title and labels
-                    ax.set_title(f'Histogram and Normal Distribution Fit of {col} by {x_label}')
+                    ax.set_title(f'Histogram and Normal Distribution Fit of {self.df.columns[col]} by {x_label}')
                     ax.set_xlabel(x_label)
-                    ax.set_ylabel(col, color=color_map(i))
+                    ax.set_ylabel(self.df.columns[col], color=color_map(i))
                 
                 # if col is continuous, plot histogram
                 elif pd.api.types.is_numeric_dtype(dtype):
                     # Continuous data but not enough unique values for normal distribution
-                    sns.histplot(self.df[col], bins=30, kde=False, color=color_map(i), ax=ax)
+                    sns.histplot(self.df.iloc[:,col], bins=30, kde=False, color=color_map(i), ax=ax)
 
                     # set title and labels
                     ax.set_title(f'Histogram of {col} by {x_label}')
                     ax.set_xlabel(x_label)
-                    ax.set_ylabel(col, color=color_map(i))
+                    ax.set_ylabel(self.df.columns[col], color=color_map(i))
                 else:
                     # plot Categorical/Ordinal/Text data: Bar Chart of top n values
                     # calculate value counts
-                    value_counts = self.df[col].value_counts().head(n)
+                    value_counts = self.df.iloc[:,col].value_counts().head(n)
                     value_counts.plot(kind='bar', color=color_map(i), ax=ax)
 
                     # set title and labels
-                    ax.set_title(f'Top {n} Values of {col} by {x_label}')
+                    ax.set_title(f'Top {n} Values of {self.df.columns[col]} by {x_label}')
                     ax.set_xlabel(x_label)
                     ax.set_ylabel('Count', color=color_map(i))
 
@@ -252,15 +255,17 @@ class DataExplorer:
                 fig, ax = plt.subplots(figsize=(12, 6))
 
                 # Plot as a scatter plot
-                ax.scatter(self.df[x_label], self.df[col], color=color_map(0), alpha=0.6)
+                ax.scatter(self.df[x_label], self.df.iloc[:,col], color=color_map(0), alpha=0.6)
 
                 # Set title and labels
                 ax.set_title(f'Scatter Plot of {col} vs {x_label}')
                 ax.set_xlabel(x_label)
-                ax.set_ylabel(col, color=color_map(0))
+                ax.set_ylabel(self.df.columns[col], color=color_map(0))
 
             # set chart params (ticks, grid, legend)
             ax.tick_params(axis='y', labelcolor=color_map(i))
             ax.grid(True)
+        
+        print(f'test')
         plt.legend(loc='best')
         plt.show()
