@@ -76,8 +76,8 @@ class DataProcessor:
             pd.set_option('display.max_colwidth', None) # Show full content of each column
             pd.set_option('display.max_rows', None)        # Show all rows
         
-        if table not in ["headers", "values", "missing_values", "dtypes", "summaries"]:
-            raise ValueError("Invalid view. Available views are: headers, values, missing_values, dtypes, summaries, or all.")
+        if table not in ["headers", "values", "missing values", "dtypes", "summaries"]:
+            raise ValueError("Invalid view. Available views are: headers, values, missing values, dtypes, summaries, or all.")
 
         views = {
             "headers": [],
