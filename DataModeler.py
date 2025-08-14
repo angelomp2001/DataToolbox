@@ -12,9 +12,10 @@ import lightgbm as lgb
 import catboost as cb
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, average_precision_score
+import tqdm
+import time
 
-
-class DataModeler2:
+class DataModeler:
     def __init__(
         self,
         model_type: str = None,  # 'classification', 'regression'
@@ -147,8 +148,12 @@ class DataModeler2:
                     model = model_class(**self.model_params)
                     print(f"Training {model}")
                     # Fit the model
+                    start_time = time.time()
                     self.fitted_model = model.fit(X, y) 
-                    
+                    end_time = time.time()
+                    elapsed_time = end_time - start_time
+                    print(f"Training time: {elapsed_time:.2f} seconds")
+
                     if verbose:
                         print(f"Trained {name} for {model_type}.")
 
@@ -161,7 +166,11 @@ class DataModeler2:
                 model = model_class(**self.model_params)
                 
                 # Fit the model
-                self.fitted_model = model.fit(X, y)
+                start_time = time.time()
+                self.fitted_model = model.fit(X, y) 
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+                print(f"Training time: {elapsed_time:.2f} seconds")
 
                 if verbose:
                     print(f"Trained {model_name} for {model_type}.")
@@ -176,7 +185,12 @@ class DataModeler2:
 
         if return_proba:
             if hasattr(self.fitted_model, "predict_proba"):
-                return self.fitted_model.predict_proba(X)[:, 1]
+                start_time = time.time()
+                y_pred_proba = self.fitted_model.predict_proba(X)[:, 1]
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+                print(f"Prediction time: {elapsed_time:.2f} seconds")
+                return y_pred_proba
             else:
                 raise ValueError("Model does not support probability predictions.")
         return self.fitted_model.predict(X)
@@ -242,7 +256,11 @@ class DataModeler2:
                 target: np.ndarray,
                 ):
             #self.fit(features, target)
+            start_time = time.time()
             y_pred = self.predict(features)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Prediction time: {elapsed_time:.2f} seconds")
             print(f'y_pred: {y_pred.shape}')
             y_proba = self.predict(valid_features_vectorized, return_proba=True) if self.model_type == 'classification' else None
             
@@ -315,15 +333,24 @@ class DataModeler2:
         best_param = None
 
         # optimization loop
-        for _ in range(max_iter):
-            mid = (low + high) / 2
-            #setattr(self, param_to_optimize, mid)
-            self.model_params[param_to_optimize] = int(mid)
+        for _ in tqdm(
+            range(max_iter),
+            desc = 'Bisection Search',
+            unit = 'iteration',
+            leave = False,
+            colour = 'green',
+            ascii = (" ", "█"),
+            ncols = 100
+        ):
+            if self.model_type == 'classification':
+                mid = (low + high) / 2
+                #setattr(self, param_to_optimize, mid)
+                self.model_params[param_to_optimize] = int(mid)
 
-            model_class = self.model_map[self.model_type][self.model_name]
-            model = model_class(**self.model_params)
-            self.fitted_model = model.fit(self.train_features_vectorized, self.train_target_vectorized)
-            score_val = eval_model(features=valid_features_vectorized, target=valid_target_vectorized)
+                model_class = self.model_map[self.model_type][self.model_name]
+                model = model_class(**self.model_params)
+                self.fitted_model = model.fit(self.train_features_vectorized, self.train_target_vectorized)
+                score_val = eval_model(features=valid_features_vectorized, target=valid_target_vectorized)
 
             if verbose:
                print(f"{param_to_optimize} = {mid:.6f}, {metric} = {score_val:.6f}" if score_val is not None else f"{param_to_optimize} = {mid:.6f}, {metric} = N/A")

@@ -1,5 +1,5 @@
 '''
-Exploratory Data Anlaysis: view columns as a table of statistics or graphically
+Exploratory Data Anlaysis: view columns as a table of statistics, key values, or graphically
 '''
 
 import pandas as pd
@@ -22,7 +22,7 @@ class DataExplorer:
     
     def view(
             self,
-            view: str = None,
+            table: str = None,
             column: int = None,
             full_screen = True
         ):
@@ -30,7 +30,7 @@ class DataExplorer:
         view tables of stats of columns
         '''
         # save to class
-        self.view = view
+        self.table = table
 
         if full_screen:
             pd.set_option('display.max_columns', None)  # Show all columns
@@ -38,7 +38,7 @@ class DataExplorer:
             pd.set_option('display.max_colwidth', None) # Show full content of each column
             pd.set_option('display.max_rows', None)        # Show all rows
         
-        if view not in ["headers", "values", "missing_values", "dtypes", "summaries"]:
+        if table not in ["headers", "values", "missing_values", "dtypes", "summaries"]:
             raise ValueError("Invalid view. Available views are: headers, values, missing_values, dtypes, summaries, or all.")
 
         views = {
@@ -117,11 +117,11 @@ class DataExplorer:
         }
 
         # output logic
-        if view is None or view == "all":
+        if table is None or table == "all":
                 for view_name, view_data in views.items():
                     # Create DataFrame and set index
                     df_view = pd.DataFrame(view_data)
-                    df_view.index = range(len(views[view]))
+                    df_view.index = range(len(views[table]))
                     self.df_view = df_view
                     if column is not None:
                         self.column = column
@@ -130,16 +130,16 @@ class DataExplorer:
                         print(f'{view_name}:\n{df_view}\n{code.get(view_name, "")}\n')
                 return self
 
-        elif view in views:
+        elif table in views:
             # Create specific view DataFrame and set index
-            df_view = pd.DataFrame(views[view])
-            df_view.index = range(len(views[view]))
+            df_view = pd.DataFrame(views[table])
+            df_view.index = range(len(views[table]))
             self.df_view = df_view
             if column is not None:
                 self.column = column
-                print(f'{view}:\n{df_view.iloc[column]}\n{code.get(view, "")}\n')
+                print(f'{table}:\n{df_view.iloc[column]}\n{code.get(table, "")}\n')
             else:
-                print(f'{view}:\n{df_view}\n{code.get(view, "")}\n')
+                print(f'{table}:\n{df_view}\n{code.get(table, "")}\n')
             return self  
         
         else:
@@ -184,10 +184,10 @@ class DataExplorer:
         
         ## Color map for different lines
         color_map = plt.cm.get_cmap('tab10', len(self.df.iloc[:,max(cols)]))
-        print(f'len(self.df.iloc[:,cols]): {len(self.df.iloc[:,cols])}')
+
         # Plot each column
         for i, col in enumerate(cols):
-            print(f'col: {col}, i: {i}')
+
             # layout
             fig, ax = plt.subplots(figsize=(12, 6))
             
@@ -266,6 +266,5 @@ class DataExplorer:
             ax.tick_params(axis='y', labelcolor=color_map(i))
             ax.grid(True)
         
-        print(f'test')
         plt.legend(loc='best')
         plt.show()
