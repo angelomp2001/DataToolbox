@@ -201,7 +201,7 @@ class DataModeler:
         valid_target_vectorized: np.ndarray = None,
         param_to_optimize: str = None,
         param_optimization_range: tuple = None,
-        tol: float = 1e-4,
+        tolerance: float = 1e-4,
         max_iter: int = 20,
         metric: str = None, # 'Accuracy', 'Precision', 'Recall', 'F1', 'R2', 'RMSE'
         manual_params: dict = None,
@@ -214,7 +214,7 @@ class DataModeler:
             - valid_features_vectorized, valid_target_vectorized: validation set
             - param_to_optimize: name of the hyperparameter to optimize
             - param_optimization_range: (low, high) range to search
-            - tol: convergence tolerance
+            - tolerance: convergence tolerance
             - max_iter: max bisection iterations
             - metric: 'Accuracy', 'Precision', 'Recall', 'F1', 'R2', 'RMSE', ROC AUC', 'PR AUC'
             - manual_params: dict of parameters to set before scoring
@@ -362,7 +362,7 @@ class DataModeler:
             else:
                 high = mid
 
-            if abs(high - low) < tol:
+            if abs(high - low) < tolerance:
                 break
 
         setattr(self, param_to_optimize, best_param)

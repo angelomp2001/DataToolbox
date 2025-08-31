@@ -1,4 +1,5 @@
-#everything starts here
+# examples
+
 import pandas as pd
 import matplotlib.pyplot as plt
 from functions.data_explorers import view, see
@@ -14,8 +15,10 @@ import inspect
 from DataProcessor import DataProcessor
 from DataModeler import DataModeler2
 
-# Extract and view
+# load data
 df = pd.read_csv('data/sprint 8 churn.csv')
+
+
 df = df.drop(['RowNumber', 'CustomerId', 'Surname'], axis=1)  # Drop unnecessary columns
 '''
 # columns=['RowNumber', 'CustomerId', 'Surname', 'CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary', 'Exited']

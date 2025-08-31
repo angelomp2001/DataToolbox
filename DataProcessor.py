@@ -187,7 +187,7 @@ class DataProcessor:
         self,
         column: int = None,
         x_axis_name: str = None,
-        n: int = 10  # Number of top values to show for categorical/text data
+        top_values: int = 10  # Number of top values to show for categorical/text data
         ):
         '''
         Visualize a DataFrame:
@@ -276,11 +276,11 @@ class DataProcessor:
                 else:
                     # plot Categorical/Ordinal/Text data: Bar Chart of top n values
                     # calculate value counts
-                    value_counts = self.df.iloc[:,col].value_counts().head(n)
+                    value_counts = self.df.iloc[:,col].value_counts().head(top_values)
                     value_counts.plot(kind='bar', color=color_map(i), ax=ax)
 
                     # set title and labels
-                    ax.set_title(f'Top {n} Values of {self.df.columns[col]} by {x_label}')
+                    ax.set_title(f'Top {top_values} Values of {self.df.columns[col]} by {x_label}')
                     ax.set_xlabel(x_label)
                     ax.set_ylabel('Count', color=color_map(i))
 
@@ -307,30 +307,28 @@ class DataProcessor:
         plt.legend(loc='best')
         plt.show()
 
-
-
     def bootstrap(self,
-        n: int = 100,
+        n_samples: int = 100,
         n_rows: int = None,
         frac_rows: float = None,
         replace: bool = True,
         weights: Optional[np.ndarray] = None,
         random_state: int = None,
         axis: str = 'index',
-        show: bool = False
+        print_head: bool = False
     ):
         """
-    Create n bootstrap samples from the data, resetting index each time.
+    Create n_samples samples with replacement from the data, resetting index each time.
 
     Parameters:
-    - n: Number of bootstrap samples.
+    - n_samples: Number of bootstrap samples.
     - n_rows: Number of rows per sample. If given, 'frac_rows' is ignored.
     - frac_rows: Fraction of rows per sample, used only if n_rows is None.
     - replace: Sample with replacement (default True).
     - weights: Sampling weights; default is uniform.
     - random_state: Seed for reproducibility.
     - axis: Sampling axis ('index' or 0 for rows).
-    - show: Print first few rows of result.
+    - print_head: Print first few rows of result.
 
     Returns:
     - self, with self.df as a MultiIndex DataFrame of samples.
@@ -346,10 +344,10 @@ class DataProcessor:
         rng = np.random.RandomState(random_state)
         samples = []
         
-        for i in range(n):
+        for i in range(n_samples):
             seed = rng.randint(0, 10**8)
             sample = self.df.sample(
-                n=n_rows if n_rows is not None else None,
+                n_samples=n_rows if n_rows is not None else None,
                 frac=frac_rows if n_rows is None else None,
                 replace=replace,
                 weights=weights,
@@ -364,13 +362,13 @@ class DataProcessor:
         
         if isinstance(self.df, pd.DataFrame):
             # Concatenate along columns, using keys to create a MultiIndex.
-            self.df = pd.concat(samples, axis=1, keys=[f'sample_{i+1}' for i in range(n)])
+            self.df = pd.concat(samples, axis=1, keys=[f'sample_{i+1}' for i in range(n_samples)])
         else:
             # For Series, rename the columns to indicate the sample number.
             self.df = pd.concat(samples, axis=1)
-            self.df.columns = [f'sample_{i+1}' for i in range(n)]
+            self.df.columns = [f'sample_{i+1}' for i in range(n_samples)]
         
-        if show:
+        if print_head:
             print(self.df.head(15))
 
         return self
@@ -381,7 +379,7 @@ class DataProcessor:
     n_target_majority: Optional[int] = None,
     n_rows: Optional[int] = None,
     random_state: int = None,
-    show: bool = False,
+    print_head: bool = False,
     ) -> pd.DataFrame:
         """
         Downsample a DataFrame to address a class imbalance issue or to reduce overall size. 
@@ -394,6 +392,7 @@ class DataProcessor:
             n_rows (Optional[int]): Downsample majority to meet this overall size. 
             random_state (int): Random state for reproducibility.
             dropna (bool): If True, drop rows where the target column is NaN before processing.
+            print_head: print head
         
         Returns:
             pd.DataFrame: A new DataFrame with the requested downsampling applied.
@@ -464,7 +463,7 @@ class DataProcessor:
             print(f'df_downsampled shape: {self.df.shape}')
             print(f'--- downsample() complete\n')
 
-            if show:
+            if print_head:
                 print(self.df.head(15))
             return self
         
@@ -477,7 +476,7 @@ class DataProcessor:
         n_target_minority: int = None,
         n_rows: int = None,
         random_state: int = None,
-        show: bool = False
+        print_head: bool = False
         ) -> pd.DataFrame:
         """
         Upsample a DataFrame for two possible reasons:
@@ -555,7 +554,7 @@ class DataProcessor:
             print(f'df_upsampled shape: {self.df.shape}\n')
             print(f'-- upsample() complete\n')
 
-            if show:
+            if print_head:
                 print(self.df.head(15))
             return self
         
@@ -569,7 +568,7 @@ class DataProcessor:
         column: int,
         missing_values_method: str,
         fill_value=0,
-        show: bool = False
+        print_head: bool = False
     ) -> pd.DataFrame:
         """
         Handle missing values in a DataFrame based on the specified method.
@@ -613,7 +612,7 @@ class DataProcessor:
         else:
             raise ValueError(f"Unknown method: {missing_values_method}")
         
-        if show:
+        if print_head:
             print(self.df.head(15))
         print(f'df shape: {self.df.shape}')
         print(f'--- missing_values() complete\n')
@@ -622,7 +621,7 @@ class DataProcessor:
     def feature_scaler(
             self,
             column_names: list = None,
-            show: bool = False) -> pd.DataFrame:
+            print_head: bool = False) -> pd.DataFrame:
         '''
         Scales all numeric features in self.df using StandardScaler.
         input: pandas DataFrames or numpy arrays/matrices.
@@ -652,7 +651,7 @@ class DataProcessor:
         # Scale the specified columns
         scaled_data[columns_to_scale] = scaler.fit_transform(scaled_data[columns_to_scale])
 
-        if show:
+        if print_head:
             print(scaled_data.head(15))
 
         self.df = scaled_data  # Update the original DataFrame with scaled values
@@ -666,7 +665,7 @@ class DataProcessor:
     ordinal_cols: Union[list, dict] = None,
     categorical_cols: list = None,
     auto_encode: bool = False,
-    show: bool = False
+    print_head: bool = False
     ) -> pd.DataFrame:
         """
         Encodes features for modeling:
@@ -748,7 +747,7 @@ class DataProcessor:
             raise ValueError(f"The following columns still have object dtype: {str_cols_remaining}")
 
         print('-- Encoding complete. No string columns remain.\n')
-        if show:
+        if print_head:
             print(self.df.head(15))
         return self, encoded_values_dict if encoded_values_dict['ordinal'] or encoded_values_dict['categorical'] else None
 
@@ -757,7 +756,7 @@ class DataProcessor:
     split_ratio: tuple = (),
     target_name: str = None,
     random_state: int = None,
-    show: bool = False
+    print_head: bool = False
     ) -> tuple:
         """
         Splits a DataFrame into training, validation, and optionally test sets based on the provided split ratios.
@@ -852,7 +851,7 @@ class DataProcessor:
             self.test_target = self.df_test[self.target_name]
 
             print(f'--- data_splitter() complete\n')
-            if show:
+            if print_head:
                 print(self.train_features.head(15))
                 print(self.valid_features.head(15))
                 print(self.test_features.head(15))
@@ -865,7 +864,7 @@ class DataProcessor:
         self,
         which: str = "all",     # options: 'train', 'valid', 'test', 'all'
         columns: str = "both",      # options: 'features', 'target', 'both'
-        show: bool = False
+        print_head: bool = False
     ):
         """
         Returns the specified split portion(s) of the dataset.
@@ -890,30 +889,30 @@ class DataProcessor:
 
         if which == "train":
             if columns == "features":
-                if show:
+                if print_head:
                     print(f'train_features shape: {self.train_features.head(15)}')
                 return self.train_features
             elif columns == "target":
-                if show:
+                if print_head:
                     print(f'train_target shape: {self.train_target.head(15)}')
                 return self.train_target
             else:
-                if show:
+                if print_head:
                     print(f'train_features shape: {self.train_features.head(15)}')
                     print(f'train_target shape: {self.train_target.head(15)}')
                 return self.train_features, self.train_target
 
         elif which == "valid":
             if columns == "features":
-                if show:
+                if print_head:
                     print(f'valid_features shape: {self.valid_features.head(15)}')
                 return self.valid_features
             elif columns == "target":
-                if show:
+                if print_head:
                     print(f'valid_target shape: {self.valid_target.head(15)}')
                 return self.valid_target
             else:
-                if show:
+                if print_head:
                     print(f'valid_features shape: {self.valid_features.head(15)}')
                     print(f'valid_target shape: {self.valid_target.head(15)}')
                 return self.valid_features, self.valid_target
@@ -922,21 +921,21 @@ class DataProcessor:
             if not hasattr(self, "test_features") or self.test_features is None:
                 raise ValueError("Test split not available. Did you use a 3-part split?")
             if columns == "features":
-                if show:
+                if print_head:
                     print(f'test_features shape: {self.test_features.head(15)}')
                 return self.test_features
             elif columns == "target":
-                if show:
+                if print_head:
                     print(f'test_target shape: {self.test_target.head(15)}')
                 return self.test_target
             else:
-                if show:
+                if print_head:
                     print(f'test_features shape: {self.test_features.head(15)}')
                     print(f'test_target shape: {self.test_target.head(15)}')
                 return self.test_features, self.test_target
 
         elif which == "all":
-            if show:
+            if print_head:
                 print(f'train_features shape: {self.train_features.head(15)}')
                 print(f'train_target shape: {self.train_target.head(15)}')
                 print(f'valid_features shape: {self.valid_features.head(15)}')
@@ -959,7 +958,7 @@ class DataProcessor:
             df=None,
             features=None,
             target=None,
-            show=False):
+            print_head=False):
         '''
         Vectorizes inputs and stores them in self.*
         '''
@@ -985,7 +984,7 @@ class DataProcessor:
             self.df_vectorized = np.concatenate((self.features_vectorized, self.target_vectorized.reshape(-1, 1)), axis=1)
 
         print(f'df: {self.df_vectorized.shape}, features: {self.features_vectorized.shape}, target: {self.target_vectorized.shape}')
-        if show:
+        if print_head:
             print(f'--- vectorize() complete\n')
             if df is not None:
                 print(f'df_vectorized shape: {self.df_vectorized[:15, :]}')
@@ -995,12 +994,11 @@ class DataProcessor:
 
         return self
 
-
     def get_vectorized(
             self,
             which: str = "all",     # options: 'train', 'valid', 'test', 'all', 'df'
             columns: str = "both",      # options: 'features', 'target', 'both'
-            show: bool = False
+            print_head: bool = False
         ):
             """
             Returns the specified split portion(s) of the dataset.
@@ -1025,30 +1023,30 @@ class DataProcessor:
 
             if which == "train":
                 if columns == "features":
-                    if show:
+                    if print_head:
                         print(f'train_features shape:\n{self.train_features_vectorized[:15, :]}')
                     return self.train_features_vectorized
                 elif columns == "target":
-                    if show:
+                    if print_head:
                         print(f'train_target shape:\n{self.train_target_vectorized[:15]}')
                     return self.train_target_vectorized
                 else:
-                    if show:
+                    if print_head:
                         print(f'train_features shape:\n{self.train_features_vectorized[:15, :]}')
                         print(f'train_target shape:\n{self.train_target_vectorized[:15]}')
                     return self.train_features_vectorized, self.train_target_vectorized
 
             elif which == "valid":
                 if columns == "features":
-                    if show:
+                    if print_head:
                         print(f'valid_features shape:\n{self.valid_features_vectorized[:15, :]}')
                     return self.valid_features_vectorized
                 elif columns == "target":
-                    if show:
+                    if print_head:
                         print(f'valid_target shape:\n{self.valid_target_vectorized[:15]}')
                     return self.valid_target_vectorized
                 else:
-                    if show:
+                    if print_head:
                         print(f'valid_features shape:\n{self.valid_features_vectorized[:15, :]}')
                         print(f'valid_target shape:\n{self.valid_target_vectorized[:15]}')
                     return self.valid_features_vectorized, self.valid_target_vectorized
@@ -1057,21 +1055,21 @@ class DataProcessor:
                 if not hasattr(self, "test_features") or self.test_features is None:
                     raise ValueError("Test split not available. Did you use a 3-part split?")
                 if columns == "features":
-                    if show:
+                    if print_head:
                         print(f'test_features shape:\n{self.test_features_vectorized[:15, :]}')
                     return self.test_features_vectorized
                 elif columns == "target":
-                    if show:
+                    if print_head:
                         print(f'test_target shape:\n{self.test_target_vectorized[:15]}')
                     return self.test_target_vectorized
                 else:
-                    if show:
+                    if print_head:
                         print(f'test_features shape:\n{self.test_features_vectorized[:15, :]}')
                         print(f'test_target shape:\n{self.test_target_vectorized[:15]}')
                     return self.test_features_vectorized, self.test_target_vectorized
 
             elif which == "all":
-                if show:
+                if print_head:
                     print(f'train_features shape:\n{self.train_features_vectorized[:15, :]}')
                     print(f'train_target shape:\n{self.train_target_vectorized[:15]}')
                     print(f'valid_features shape:\n{self.valid_features_vectorized[:15, :]}')
@@ -1087,19 +1085,19 @@ class DataProcessor:
             
             elif which == "df":
                 if columns == "features":
-                    if show:
+                    if print_head:
                         print(f'df_vectorized shape:\n{self.df_vectorized[:15, :-1]}')
                     return self.df_vectorized[:, :-1]
                 elif columns == "target":
-                    if show:
+                    if print_head:
                         print(f'df_target_vectorized shape:\n{self.df_vectorized[:15, -1]}')
                     return self.df_vectorized[:, -1]
                 elif columns == 'all' or columns is None:
-                    if show:
+                    if print_head:
                         print(f'df_vectorized shape:\n{self.df_vectorized[:15, :]}')
                     return self.df_vectorized
                 elif columns == 'both':
-                    if show:
+                    if print_head:
                         print(f'df_vectorized features shape:\n{self.df_vectorized[:15, :-1]}')
                         print(f'df_vectorized target shape:\n{self.df_vectorized[:15, -1]}')
                     return self.df_vectorized[:, :-1], self.df_vectorized[:, -1]
